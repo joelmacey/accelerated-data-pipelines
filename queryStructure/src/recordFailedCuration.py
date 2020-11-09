@@ -1,0 +1,1 @@
+# Record a successful curation in history table

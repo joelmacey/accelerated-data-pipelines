@@ -1,0 +1,1 @@
+# Copy the failed file (if it exists) to the curation failed bucket

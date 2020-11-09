@@ -1,0 +1,332 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Creates the Query Pack component of the Data Lake.
+
+Parameters:
+  # CurationFailureTopicName:
+  #   Type: String
+  #   Default: datalake-curation-failure
+  #   Description: Please add a SNS topic name to receive failure notifications
+
+  EnvironmentPrefix:
+    Type: String
+    Description: Enter the environment prefix used for the DataLake structure (S3 Buckets and DynamoDB tables
+    MinLength: 3
+    MaxLength: 19
+    AllowedPattern: "[a-z][a-z0-9-]+"
+
+# Metadata:
+#   'AWS::CloudFormation::Interface':
+#     ParameterGroups:
+#       - Label:
+#           default: SNS Failure Notifications
+#         Parameters:
+#           - CurationFailureTopicName
+
+Resources:
+   # Roles - these need breaking down into finegrained roles for each lambda.
+  StatesExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"            
+  
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${EnvironmentPrefix}-accelerated-query-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: S3GetPutTag
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:HeadObject
+                  - s3:ListAllMyBuckets
+                  - s3:ListBucket
+                  - s3:GetObjectVersionTagging
+                  - s3:GetObjectTagging
+                  - s3:PutObjectTagging
+                  - s3:PutObjectAcl
+                Resource: "*"              
+        - PolicyName: KMSBasic
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:Encrypt
+                  - kms:PutKeyPolicy
+                  - kms:GenerateDataKey
+                Resource: "*"              
+        - PolicyName: Logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: "*"      
+        - PolicyName: Glue
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetTable
+                Resource: "*"                          
+        - PolicyName: DDBGetPutScan
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetShardIterator
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:DescribeStream
+                  - dynamodb:UpdateTable
+                  - dynamodb:GetRecords
+                Resource: "*"
+  # SAM Serverless (Lambda) functions
+  # Expected event: {"fileType": "sample_file"}
+  StartProcessing:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: startProcessing.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/startProcessing.py
+      Description: Initiates the Query Processing Step Function.
+      MemorySize: 128
+      Timeout: 300
+      Policies: 
+        - arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+      Environment:
+        Variables:
+          CURATION_DETAILS_TABLE_NAME: 
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+          CURATION_HISTORY_TABLE_NAME: 
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+          STEP_FUNCTION: !Ref QueryProcessor
+          CURATION_BUCKET_NAME:
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-S3Curation-Name"
+          FAILED_CURATION_BUCKET_NAME:
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-S3FailedCuration-Name"
+          SCRIPTS_BUCKET_NAME:
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-S3Scripts-Name"
+  RetrieveDetails:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: retrieveDetails.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/retrieveDetails.py
+      Description: Retrieves the details from the curation details dynamodb table.
+      MemorySize: 128
+      Timeout: 300
+      Policies: 
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+  ValidateDetails:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: validateDetails.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/validateDetails.py
+      Description: Validates details that are within the dynamodb entry.
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+  QueryProcessor:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${EnvironmentPrefix}queryengine" 
+      DefinitionString: !Sub 
+        - |-
+          {
+            "Comment": "State machine to query data available in the data lake",
+            "StartAt": "RetrieveDetails",
+            "States": {
+              "RetrieveDetails": {
+                "Type": "Task",
+                "Resource": "${RetrieveDetailsArn}",
+                "Comment": "Retrieves the details that are within the dynamodb entry.",
+                "Next": "ValidateDetails",
+                "Catch": [
+                    {
+                       "ErrorEquals": ["RetrieveCurationDetailsException","Exception"],
+                       "ResultPath": "$.error-info",
+                       "Next": "FinishedProcessingUnsuccessfulFile"
+                    }
+                 ],
+                "Retry" : [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.Unknown",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    },
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    }
+                ]
+
+              },
+              "ValidateDetails": {
+                "Type": "Task",
+                "Resource": "${ValidateDetailsArn}",
+                "Comment": "Validates the details that are within the dynamodb entry.",
+                "Next": "FinishedProcessingSuccessfulFile",
+                "Catch": [
+                    {
+                       "ErrorEquals": ["RetrieveCurationDetailsException","Exception"],
+                       "ResultPath": "$.error-info",
+                       "Next": "FinishedProcessingUnsuccessfulFile"
+                    }
+                 ],
+                "Retry" : [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.Unknown",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    },
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    }
+                ]
+
+              },                                 
+              "FinishedProcessingUnsuccessfulFile": {
+                "Type": "Pass",
+                "Result": "Fail",
+                "End": true
+              },
+              "FinishedProcessingSuccessfulFile": {
+                "Type": "Pass",
+                "Result": "Success",
+                "End": true
+              }
+            }
+          }
+        - RetrieveDetailsArn: !GetAtt [RetrieveDetails, Arn]
+          ValidateDetailsArn: !GetAtt [ValidateDetails, Arn]
+          # VerifyFileSchemaArn: !GetAtt [VerifyFileSchema, Arn]
+          # CalculateMetaDataForFileArn: !GetAtt [CalculateMetaDataForFile, Arn]
+          # RecordSuccessfulStagingArn: !GetAtt [RecordSuccessfulStaging, Arn]
+          # CopyFileFromRawToStagingArn: !GetAtt [CopyFileFromRawToStaging, Arn]
+          # CopyFileFromRawToFailedArn: !GetAtt [CopyFileFromRawToFailed, Arn]
+          # DeleteRawFileArn: !GetAtt [DeleteRawFile, Arn]
+          # RecordFailedStagingArn: !GetAtt [RecordFailedStaging, Arn]
+      RoleArn: !GetAtt [ StatesExecutionRole, Arn ]
+  # StartQueryExecution:
+  #   Type: 'AWS::Serverless::Function'
+  #   Properties:
+  #     Handler: StartQueryExecution.lambda_handler
+  #     Runtime: python3.6
+  #     CodeUri: ./src/StartQueryExecution.py
+  #     Description: Initiates theFile Processing Step Function. This is triggered when new file put into RAW bucket.
+  #     MemorySize: 128
+  #     Timeout: 300
+  #     Policies: 
+  #       - arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess
+  #       - DynamoDBCrudPolicy:
+  #           TableName:
+  #             Fn::ImportValue:
+  #               !Sub "${EnvironmentPrefix}DataLake-S3FileProcessingCacheTableName"
+  #       - DynamoDBCrudPolicy:
+  #           TableName:
+  #             Fn::ImportValue:
+  #               !Sub "${EnvironmentPrefix}DataLake-DataCatalogTableName"
+  #       - SNSPublishMessagePolicy:
+  #           TopicName: !Sub "${EnvironmentPrefix}${FileProcessingFailureTopicName}"
+  #     Environment:
+  #       Variables:
+  #         DATA_CATALOG_TABLE_NAME:     
+  #           Fn::ImportValue:
+  #             !Sub "${EnvironmentPrefix}DataLake-DataCatalogTableName"
+  #         DATA_SOURCE_TABLE_NAME: 
+  #           Fn::ImportValue:
+  #             !Sub "${EnvironmentPrefix}DataLake-DataSourceTableName"
+  #         S3_CACHE_TABLE_NAME:
+  #            Fn::ImportValue:
+  #               !Sub "${EnvironmentPrefix}DataLake-S3FileProcessingCacheTableName"          
+  #         SNS_FAILURE_ARN: !Ref FileProcessingFailureSNS    
+  #         STEP_FUNCTION: !Ref FileProcessor
+  #         STAGING_BUCKET_NAME:
+  #            Fn::ImportValue:
+  #               !Sub "${EnvironmentPrefix}DataLake-S3Staging-Name"  
+  #         RAW_BUCKET_NAME:
+  #            Fn::ImportValue:
+  #               !Sub "${EnvironmentPrefix}DataLake-S3Raw-Name"
+  #         FAILED_BUCKET_NAME: 
+  #               Fn::ImportValue:
+  #                 !Sub "${EnvironmentPrefix}DataLake-S3Failed-Name"

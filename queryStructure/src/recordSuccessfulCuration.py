@@ -1,0 +1,1 @@
+# Record a failed curation in history table
