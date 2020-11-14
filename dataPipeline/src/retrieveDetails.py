@@ -67,9 +67,13 @@ def attach_file_settings_to_event(event, context):
     output_filename = item['outputDetails']['filename'] \
         if 'filename' in item['outputDetails'] \
         else None
+    deleteMetadataFileBool = item['outputDetails']['deleteMetadataFile'] \
+        if 'deleteMetadataFile' in item['outputDetails'] \
+        else False
     event.update({'scriptFilePath': item['sqlFilePath']})
     event.update({'glueDetails': item['glueDetails']})
     event.update({'outputFilename': output_filename})
+    event.update({'deleteMetadataFileBool': deleteMetadataFileBool})
     event.update({'outputFolderPath': item['outputDetails']['outputFolderPath']})
     event.update({'requiredMetadata': item['outputDetails']['metadata']})
     event.update({'requiredTags': item['outputDetails']['tags']})

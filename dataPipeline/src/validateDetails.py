@@ -8,11 +8,13 @@ import botocore
 class ValidateDetailsException(Exception):
     pass
 
-def does_object_exist(bucket, key):
+def get_code_commit_file(repo, filePath):
  
-    s3 = boto3.resource('s3')
-
-    s3.Object(bucket, key).load()
+    client = boto3.client('codecommit')
+    response = client.get_file(
+        repositoryName=repo,
+        filePath=filePath
+    )
 
 def does_database_exist(database):
     
@@ -69,7 +71,7 @@ def validate_details(event, context):
     :rtype: Python type - Dict / list / int / string / float / None
     """
 
-    does_object_exist(event['settings']['scriptsBucket'], event['scriptFilePath'])
+    get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
 
     does_database_exist(event['glueDetails']['database'])
 

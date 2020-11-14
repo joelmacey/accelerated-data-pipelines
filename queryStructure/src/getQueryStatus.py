@@ -1,1 +1,0 @@
-# Use in the loop to get the status of the query that has been ran

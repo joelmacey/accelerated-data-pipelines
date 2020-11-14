@@ -51,10 +51,10 @@ def start_query_execution(event, context):
     :return: The event object passed into the method
     :rtype: Python type - Dict / list / int / string / float / None
     """
-    sql_query = retrieve_sql_query(event['settings']['scriptsBucket'], event['scriptFilePath'])
+    sql_query = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
     
     curation_bucket = event['settings']['curationBucket']
-    curation_path = event['outputFolderPath']
+    curation_path = event['outputFolderPath'] #test-curation/
     output_location = f's3://{curation_bucket}/{curation_path}' 
     print(output_location)
     query_execution_id = start_athena_query(sql_query, event['glueDetails']['database'], output_location)
@@ -63,51 +63,12 @@ def start_query_execution(event, context):
     
     return event
 
-def retrieve_sql_query(bucket, key):
-    s3 = boto3.client('s3')
-    
-    #Create a file object using the bucket and object key. 
-    fileobj = s3.get_object(
-        Bucket=bucket,
-        Key=key
-    )
-        
-    # open the file object and read it into the variable filedata. 
-    filedata = fileobj['Body'].read()
-    
-    #file data will be a binary stream.  We have to decode it 
-    contents = filedata.decode('utf-8')
-    return contents
+def get_code_commit_file(repo, filePath):
+ 
+    client = boto3.client('codecommit')
 
-event = json.loads('''{
-  "curationDetails": {
-    "curationType": "test-curation",
-    "stagingExecutionName": "202011091201068375396YMD6Y_test_curation"
-  },
-  "settings": {
-    "curationDetailsTableName": "testcurationDetails",
-    "curationHistoryTableName": "testcurationHistory",
-    "curationBucket": "tdfv1wadatahub-test-curation",
-    "scriptsBucket": "tdfv1wadatahub-test-scripts",
-    "failedCurationBucket": "tdfv1wadatahub-test-failed-curation"
-  },
-  "scriptFilePath": "test/test.sql",
-  "glueDetails": {
-    "database": "wadpc-db",
-    "table": "tdfv5_wadatahub"
-  },
-  "outputFilename": "test",
-  "outputFolderPath": "test-curation/",
-  "requiredMetadata": {
-    "sourcesystem": "DataLake Demonstration",
-    "creator": "test",
-    "quality": "HIGH"
-  },
-  "requiredTags": {
-    "pii": "FALSE",
-    "dataSource": "ABS",
-    "dataOwner": "ABS"
-  }
-}''')
-context = ''
-lambda_handler(event, context)
+    response = client.get_file(
+        repositoryName=repo,
+        filePath=filePath
+    )
+    return response['fileContent'].decode('utf-8')

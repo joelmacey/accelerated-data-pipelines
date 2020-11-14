@@ -1,0 +1,490 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: Creates the Query Pack component of the Data Lake.
+
+Parameters:
+  # CurationFailureTopicName:
+  #   Type: String
+  #   Default: datalake-curation-failure
+  #   Description: Please add a SNS topic name to receive failure notifications
+
+  EnvironmentPrefix:
+    Type: String
+    Description: Enter the environment prefix used for the DataLake structure (S3 Buckets and DynamoDB tables
+    MinLength: 3
+    MaxLength: 19
+    AllowedPattern: "[a-z][a-z0-9-]+"
+
+# Metadata:
+#   'AWS::CloudFormation::Interface':
+#     ParameterGroups:
+#       - Label:
+#           default: SNS Failure Notifications
+#         Parameters:
+#           - CurationFailureTopicName
+
+Resources:
+   
+   # Roles - these need breaking down into finegrained roles for each lambda.
+  StatesExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - !Sub states.${AWS::Region}.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: StatesExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"            
+  
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: !Sub "${EnvironmentPrefix}-accelerated-query-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        - PolicyName: S3GetPutTag
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:HeadObject
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - s3:ListBucketMultipartUploads
+                  - s3:ListMultipartUploadParts
+                  - s3:AbortMultipartUpload
+                  - s3:ListBucket
+                  - s3:GetObjectVersionTagging
+                  - s3:GetObjectTagging
+                  - s3:PutObjectTagging
+                  - s3:PutObjectAcl
+                Resource: "*"              
+        - PolicyName: KMSBasic
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:Encrypt
+                  - kms:PutKeyPolicy
+                  - kms:GenerateDataKey
+                Resource: "*"              
+        - PolicyName: Logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: "*"      
+        - PolicyName: Glue
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - glue:GetDatabase
+                  - glue:GetTable
+                  - glue:GetPartition
+                  - glue:GetPartitions
+                Resource: "*"                          
+        - PolicyName: DDBGetPutScan
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:GetShardIterator
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:DescribeStream
+                  - dynamodb:UpdateTable
+                  - dynamodb:GetRecords
+                Resource: "*"
+        - PolicyName: AthenaAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - athena:GetQueryExecution
+                  - athena:GetQueryResults
+                  - athena:ListQueryExecutions
+                  - athena:StartQueryExecution
+                Resource: "*"
+        - PolicyName: CodeCommit
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codecommit:GetBlob
+                  - codecommit:GetFile
+                  - codecommit:GetFolder
+                  - codecommit:GetRepository
+                  - codecommit:ListRepositories
+                Resource: "*"
+
+  # Expected event: {"fileType": "sample_file"}
+  StartCurationProcessing:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-start-curation-processing"
+      Handler: startCurationProcessing.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/startCurationProcessing.py
+      Description: Initiates the Query Processing Step Function.
+      MemorySize: 128
+      Timeout: 300
+      Policies: 
+        - arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+      Environment:
+        Variables:
+          CURATION_DETAILS_TABLE_NAME: 
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+          CURATION_HISTORY_TABLE_NAME: 
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+          STEP_FUNCTION: !Ref QueryProcessor
+          CURATION_BUCKET_NAME:
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-S3Curation-Name"
+          SCRIPTS_REPO_NAME:
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-CodeCommitScriptsRepo-Name"
+  
+  RetrieveDetails:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-retrieve-details"
+      Handler: retrieveDetails.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/retrieveDetails.py
+      Description: Retrieves the details from the curation details dynamodb table.
+      MemorySize: 128
+      Timeout: 300
+      Policies: 
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+  
+  ValidateDetails:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-validate-details"
+      Handler: validateDetails.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/validateDetails.py
+      Description: Validates details that are within the dynamodb entry.
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+  
+  StartQueryExecution:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-start-query-execution"
+      Handler: startQueryExecution.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/startQueryExecution.py
+      Description: Starts the query using the details from the dynamodb item.
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+  
+  GetQueryExecutionStatus:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-get-query-execution-status"
+      Handler: getQueryExecutionStatus.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/getQueryExecutionStatus.py
+      Description: Retrieves the status of the execution and the output location.
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+
+  UpdateOutputDetails:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-update-output-details"
+      Handler: updateOutputDetails.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/updateOutputDetails.py
+      Description: Update the output file with details defined in the dynamodb item
+      MemorySize: 128
+      Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
+
+  QueryProcessor:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub "${EnvironmentPrefix}queryengine" 
+      DefinitionString: !Sub 
+        - |-
+          {
+            "Comment": "State machine to query data available in the data lake",
+            "StartAt": "RetrieveDetails",
+            "States": {
+              "RetrieveDetails": {
+                "Type": "Task",
+                "Resource": "${RetrieveDetailsArn}",
+                "Comment": "Retrieves the details that are within the dynamodb entry.",
+                "Next": "ValidateDetails",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["RetrieveCurationDetailsException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              },
+
+              "ValidateDetails": {
+                "Type": "Task",
+                "Resource": "${ValidateDetailsArn}",
+                "Comment": "Validates the details that are within the dynamodb entry.",
+                "Next": "StartQueryExecution",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["ValidateDetailsException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              }, 
+
+              "StartQueryExecution": {
+                "Type": "Task",
+                "Resource": "${StartQueryExecutionArn}",
+                "Comment": "Starts the query using the details from the dynamodb item.",
+                "Next": "Wait",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["StartQueryExecutionException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                    {
+                      "ErrorEquals": [
+                        "Lambda.Unknown",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    },
+                    {
+                      "ErrorEquals": [
+                        "States.ALL"
+                      ],
+                      "IntervalSeconds": 2,
+                      "MaxAttempts": 4,
+                      "BackoffRate": 1.5
+                    }
+                ]
+              }, 
+
+              "Wait": {
+                "Type": "Wait",
+                "Seconds": 15,
+                "Next": "GetQueryExecutionStatus"
+              },
+              
+              "GetQueryExecutionStatus": {
+                "Type": "Task",
+                "Resource": "${GetQueryExecutionStatusArn}",
+                "Comment": "Retrieves the status of the execution and the output location.",
+                "Next": "HandleStatus",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["StartQueryExecutionException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              }, 
+           
+              "HandleStatus": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.queryStatus",
+                    "StringEquals": "SUCCEEDED",
+                    "Next": "UpdateOutputDetails"
+                  },
+                  {
+                    "Variable": "$.queryStatus",
+                    "StringEquals": "FAILED",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Default": "GetQueryExecutionStatus"
+              },  
+              "UpdateOutputDetails": {
+                "Type": "Task",
+                "Resource": "${UpdateOutputDetailsArn}",
+                "Comment": "Update the output file with details defined in the dynamodb item.",
+                "Next": "FinishedProcessingSuccessfulFile",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["StartQueryExecutionException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              },
+
+              "FinishedProcessingUnsuccessfulFile": {
+                "Type": "Pass",
+                "Result": "Fail",
+                "End": true
+              },
+
+              "FinishedProcessingSuccessfulFile": {
+                "Type": "Pass",
+                "Result": "Success",
+                "End": true
+              }
+            }
+          }
+          
+        - RetrieveDetailsArn: !GetAtt [RetrieveDetails, Arn]
+          ValidateDetailsArn: !GetAtt [ValidateDetails, Arn]
+          StartQueryExecutionArn: !GetAtt [StartQueryExecution, Arn]
+          GetQueryExecutionStatusArn: !GetAtt [GetQueryExecutionStatus, Arn]
+          UpdateOutputDetailsArn: !GetAtt [UpdateOutputDetails, Arn]
+          # CalculateMetaDataForFileArn: !GetAtt [CalculateMetaDataForFile, Arn]
+          # RecordSuccessfulStagingArn: !GetAtt [RecordSuccessfulStaging, Arn]
+          # CopyFileFromRawToStagingArn: !GetAtt [CopyFileFromRawToStaging, Arn]
+          # CopyFileFromRawToFailedArn: !GetAtt [CopyFileFromRawToFailed, Arn]
+          # DeleteRawFileArn: !GetAtt [DeleteRawFile, Arn]
+          # RecordFailedStagingArn: !GetAtt [RecordFailedStaging, Arn]
+      RoleArn: !GetAtt [ StatesExecutionRole, Arn ]

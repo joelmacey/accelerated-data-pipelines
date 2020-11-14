@@ -12,7 +12,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-class StartProcessingException(Exception):
+class StartCurationProcessingException(Exception):
     pass
 
 
@@ -34,18 +34,18 @@ def lambda_handler(event, context):
     :type context: LambdaContext
     :return: The event object passed into the method
     :rtype: Python type - Dict / list / int / string / float / None
-    :raises StartProcessingException: On any error or exception
+    :raises StartCurationProcessingException: On any error or exception
     '''
     try:
-        return start_processing(event, context)
-    except StartProcessingException:
+        return start_curation_processing(event, context)
+    except StartCurationProcessingException:
         raise
     except Exception as e:
         traceback.print_exc()
-        raise StartProcessingException(e)
+        raise StartCurationProcessingException(e)
 
 
-def start_processing(event, context):
+def start_curation_processing(event, context):
     '''
     start_processing Confirm the lambda context request id is
     not already being processed, check this is not just a folder being 
@@ -91,10 +91,8 @@ def start_step_function_for_event(curationType):
                     os.environ['CURATION_HISTORY_TABLE_NAME'],
                 'curationBucket':
                     os.environ['CURATION_BUCKET_NAME'],
-                'scriptsBucket':
-                    os.environ['SCRIPTS_BUCKET_NAME'],
-                'failedCurationBucket':
-                    os.environ['FAILED_CURATION_BUCKET_NAME']
+                'scriptsRepo':
+                    os.environ['SCRIPTS_REPO_NAME']
             }
         }
 
