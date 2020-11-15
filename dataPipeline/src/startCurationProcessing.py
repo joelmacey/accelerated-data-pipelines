@@ -73,7 +73,7 @@ def start_step_function_for_event(curationType):
     :type key: Python String
     '''
     try:
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         keystring = re.sub('\W+', '_', curationType)  # Remove special chars
         step_function_name = timestamp + id_generator() + '_' + keystring
 
@@ -82,7 +82,8 @@ def start_step_function_for_event(curationType):
         sfn_Input = {
             'curationDetails': {
                 'curationType': curationType,
-                'stagingExecutionName': step_function_name
+                'curationExecutionName': step_function_name,
+                'curationTimestamp': timestamp
             },
             'settings': {
                 'curationDetailsTableName':
@@ -94,6 +95,7 @@ def start_step_function_for_event(curationType):
                 'scriptsRepo':
                     os.environ['SCRIPTS_REPO_NAME']
             }
+            
         }
 
         # Start step function

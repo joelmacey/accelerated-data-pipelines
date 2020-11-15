@@ -137,51 +137,6 @@ Resources:
             - codecommit:GetRepository
             - codecommit:ListRepositories
             Resource: '*'
-      - PolicyName: EventBridge
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - events:DeleteRule
-            - events:DescribeRule
-            - events:PutRule
-            - events:PutTargets
-            Resource: '*'
-  CurationDetailsStream:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      BatchSize: 1
-      Enabled: true
-      EventSourceArn:
-        Fn::ImportValue:
-          Fn::Sub: ${EnvironmentPrefix}-CurationDetailsStreamARN
-      FunctionName:
-        Fn::GetAtt:
-        - CreateNewEventRule
-        - Arn
-      StartingPosition: LATEST
-    DependsOn: LambdaExecutionRole
-  CreateNewEventRule:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName:
-        Fn::Sub: ${EnvironmentPrefix}-create-new-event-rule
-      Handler: createNewEventRule.lambda_handler
-      Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/912bf16ed3f2a7a8601b5a772f883594
-      Description: Create a new event rule using the cron expression.
-      MemorySize: 128
-      Timeout: 300
-      Role:
-        Fn::GetAtt:
-        - LambdaExecutionRole
-        - Arn
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Fn::ImportValue:
-              Fn::Sub: ${EnvironmentPrefix}-CurationDetailsTableName
   StartCurationProcessing:
     Type: AWS::Serverless::Function
     Properties:
@@ -189,7 +144,7 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-start-curation-processing
       Handler: startCurationProcessing.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/84b1cf932e507f23a9415fdf44eaf04c
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/3443bb66f554b3a8b13458f575265aa8
       Description: Initiates the Query Processing Step Function.
       MemorySize: 128
       Timeout: 300
@@ -226,10 +181,14 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-retrieve-details
       Handler: retrieveDetails.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/5b9e5b8e86228185aea64874c3ad0f94
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/2e34f77c3803e0682465bde2a8cda892
       Description: Retrieves the details from the curation details dynamodb table.
       MemorySize: 128
       Timeout: 300
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
@@ -242,7 +201,7 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-validate-details
       Handler: validateDetails.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/2a19a8f8998fce90db56bad7aec59112
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/c7d5c7683b3a06a22e47db80764a6452
       Description: Validates details that are within the dynamodb entry.
       MemorySize: 128
       Timeout: 300
@@ -257,7 +216,7 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-start-query-execution
       Handler: startQueryExecution.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/e46183469fbf2a520adc9352c8e88ef8
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/1ce218af2bc5667d9cd0a67eff57b0ef
       Description: Starts the query using the details from the dynamodb item.
       MemorySize: 128
       Timeout: 300
@@ -272,7 +231,7 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-get-query-execution-status
       Handler: getQueryExecutionStatus.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/b47c0ecc4e720b51e4d127e4090d1687
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/11bf88ff4f7414b970f310fb3ab2b1c6
       Description: Retrieves the status of the execution and the output location.
       MemorySize: 128
       Timeout: 300
@@ -287,7 +246,7 @@ Resources:
         Fn::Sub: ${EnvironmentPrefix}-update-output-details
       Handler: updateOutputDetails.lambda_handler
       Runtime: python3.6
-      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/5e97f771bc55e8b652431cd40ec34e47
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/51d2ebbabc489aaa24519938f75715e5
       Description: Update the output file with details defined in the dynamodb item
       MemorySize: 128
       Timeout: 300
@@ -295,6 +254,44 @@ Resources:
         Fn::GetAtt:
         - LambdaExecutionRole
         - Arn
+  RecordSuccessfulCuration:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${EnvironmentPrefix}-record-successful-curation
+      Handler: recordSuccessfulCuration.lambda_handler
+      Runtime: python3.6
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/1826e086a605aa9f53647a9d42f64e8b
+      Description: Records successful curatin in the curation histroy, and sends success
+        SNS if configured.
+      MemorySize: 128
+      Timeout: 300
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Fn::ImportValue:
+              Fn::Sub: ${EnvironmentPrefix}-CurationHistoryTableName
+      - SNSPublishMessagePolicy:
+          TopicName: '*'
+  RecordUnsuccessfulCuration:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: ${EnvironmentPrefix}-record-unsuccessful-curation
+      Handler: recordUnsuccessfulCuration.lambda_handler
+      Runtime: python3.6
+      CodeUri: s3://tdfv1wadatahub-test-acceleratedquerycodepackages/aa757c146546eed6acd56d820b3805ac
+      Description: Records unsuccessful curatin in the curation histroy, and sends
+        success SNS if configured.
+      MemorySize: 128
+      Timeout: 300
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Fn::ImportValue:
+              Fn::Sub: ${EnvironmentPrefix}-CurationHistoryTableName
+      - SNSPublishMessagePolicy:
+          TopicName: '*'
   QueryProcessor:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -309,10 +306,10 @@ Resources:
           \ entry.\",\n      \"Next\": \"ValidateDetails\",\n      \"Catch\": [\n\
           \        {\n          \"ErrorEquals\": [\"RetrieveCurationDetailsException\"\
           ,\"Exception\"],\n          \"ResultPath\": \"$.error-info\",\n        \
-          \  \"Next\": \"FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n\
-          \      \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n        \
-          \    \"Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n   \
-          \         \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
+          \  \"Next\": \"RecordUnsuccessfulCuration\"\n        }\n      ],\n     \
+          \ \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n            \"\
+          Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n          \
+          \  \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
           \n          ],\n          \"IntervalSeconds\": 2,\n          \"MaxAttempts\"\
           : 4,\n          \"BackoffRate\": 1.5\n        },\n        {\n          \"\
           ErrorEquals\": [\n            \"States.ALL\"\n          ],\n          \"\
@@ -323,8 +320,8 @@ Resources:
           ,\n      \"Next\": \"StartQueryExecution\",\n      \"Catch\": [\n      \
           \  {\n          \"ErrorEquals\": [\"ValidateDetailsException\",\"Exception\"\
           ],\n          \"ResultPath\": \"$.error-info\",\n          \"Next\": \"\
-          FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n      \"Retry\"\
-          \ : [\n        {\n          \"ErrorEquals\": [\n            \"Lambda.Unknown\"\
+          RecordUnsuccessfulCuration\"\n        }\n      ],\n      \"Retry\" : [\n\
+          \        {\n          \"ErrorEquals\": [\n            \"Lambda.Unknown\"\
           ,\n            \"Lambda.ServiceException\",\n            \"Lambda.AWSLambdaException\"\
           ,\n            \"Lambda.SdkClientException\"\n          ],\n          \"\
           IntervalSeconds\": 2,\n          \"MaxAttempts\": 4,\n          \"BackoffRate\"\
@@ -336,9 +333,9 @@ Resources:
           : \"Starts the query using the details from the dynamodb item.\",\n    \
           \  \"Next\": \"Wait\",\n      \"Catch\": [\n        {\n          \"ErrorEquals\"\
           : [\"StartQueryExecutionException\",\"Exception\"],\n          \"ResultPath\"\
-          : \"$.error-info\",\n          \"Next\": \"FinishedProcessingUnsuccessfulFile\"\
-          \n        }\n      ],\n      \"Retry\" : [\n          {\n            \"\
-          ErrorEquals\": [\n              \"Lambda.Unknown\",\n              \"Lambda.ServiceException\"\
+          : \"$.error-info\",\n          \"Next\": \"RecordUnsuccessfulCuration\"\n\
+          \        }\n      ],\n      \"Retry\" : [\n          {\n            \"ErrorEquals\"\
+          : [\n              \"Lambda.Unknown\",\n              \"Lambda.ServiceException\"\
           ,\n              \"Lambda.AWSLambdaException\",\n              \"Lambda.SdkClientException\"\
           \n            ],\n            \"IntervalSeconds\": 2,\n            \"MaxAttempts\"\
           : 4,\n            \"BackoffRate\": 1.5\n          },\n          {\n    \
@@ -352,10 +349,10 @@ Resources:
           \ location.\",\n      \"Next\": \"HandleStatus\",\n      \"Catch\": [\n\
           \        {\n          \"ErrorEquals\": [\"StartQueryExecutionException\"\
           ,\"Exception\"],\n          \"ResultPath\": \"$.error-info\",\n        \
-          \  \"Next\": \"FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n\
-          \      \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n        \
-          \    \"Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n   \
-          \         \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
+          \  \"Next\": \"RecordUnsuccessfulCuration\"\n        }\n      ],\n     \
+          \ \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n            \"\
+          Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n          \
+          \  \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
           \n          ],\n          \"IntervalSeconds\": 2,\n          \"MaxAttempts\"\
           : 4,\n          \"BackoffRate\": 1.5\n        },\n        {\n          \"\
           ErrorEquals\": [\n            \"States.ALL\"\n          ],\n          \"\
@@ -365,27 +362,54 @@ Resources:
           : \"$.queryStatus\",\n          \"StringEquals\": \"SUCCEEDED\",\n     \
           \     \"Next\": \"UpdateOutputDetails\"\n        },\n        {\n       \
           \   \"Variable\": \"$.queryStatus\",\n          \"StringEquals\": \"FAILED\"\
-          ,\n          \"Next\": \"FinishedProcessingUnsuccessfulFile\"\n        }\n\
-          \      ],\n      \"Default\": \"GetQueryExecutionStatus\"\n    },  \n  \
-          \  \"UpdateOutputDetails\": {\n      \"Type\": \"Task\",\n      \"Resource\"\
-          : \"${UpdateOutputDetailsArn}\",\n      \"Comment\": \"Update the output\
-          \ file with details defined in the dynamodb item.\",\n      \"Next\": \"\
-          FinishedProcessingSuccessfulFile\",\n      \"Catch\": [\n        {\n   \
-          \       \"ErrorEquals\": [\"StartQueryExecutionException\",\"Exception\"\
-          ],\n          \"ResultPath\": \"$.error-info\",\n          \"Next\": \"\
-          FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n      \"Retry\"\
-          \ : [\n        {\n          \"ErrorEquals\": [\n            \"Lambda.Unknown\"\
-          ,\n            \"Lambda.ServiceException\",\n            \"Lambda.AWSLambdaException\"\
-          ,\n            \"Lambda.SdkClientException\"\n          ],\n          \"\
+          ,\n          \"Next\": \"RecordUnsuccessfulCuration\"\n        }\n     \
+          \ ],\n      \"Default\": \"GetQueryExecutionStatus\"\n    },  \n    \"UpdateOutputDetails\"\
+          : {\n      \"Type\": \"Task\",\n      \"Resource\": \"${UpdateOutputDetailsArn}\"\
+          ,\n      \"Comment\": \"Update the output file with details defined in the\
+          \ dynamodb item.\",\n      \"Next\": \"RecordSuccessfulCuration\",\n   \
+          \   \"Catch\": [\n        {\n          \"ErrorEquals\": [\"StartQueryExecutionException\"\
+          ,\"Exception\"],\n          \"ResultPath\": \"$.error-info\",\n        \
+          \  \"Next\": \"RecordUnsuccessfulCuration\"\n        }\n      ],\n     \
+          \ \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n            \"\
+          Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n          \
+          \  \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
+          \n          ],\n          \"IntervalSeconds\": 2,\n          \"MaxAttempts\"\
+          : 4,\n          \"BackoffRate\": 1.5\n        },\n        {\n          \"\
+          ErrorEquals\": [\n            \"States.ALL\"\n          ],\n          \"\
           IntervalSeconds\": 2,\n          \"MaxAttempts\": 4,\n          \"BackoffRate\"\
-          : 1.5\n        },\n        {\n          \"ErrorEquals\": [\n           \
-          \ \"States.ALL\"\n          ],\n          \"IntervalSeconds\": 2,\n    \
-          \      \"MaxAttempts\": 4,\n          \"BackoffRate\": 1.5\n        }\n\
-          \      ]\n    },\n\n    \"FinishedProcessingUnsuccessfulFile\": {\n    \
-          \  \"Type\": \"Pass\",\n      \"Result\": \"Fail\",\n      \"End\": true\n\
-          \    },\n\n    \"FinishedProcessingSuccessfulFile\": {\n      \"Type\":\
-          \ \"Pass\",\n      \"Result\": \"Success\",\n      \"End\": true\n    }\n\
-          \  }\n}"
+          : 1.5\n        }\n      ]\n    },\n    \"RecordSuccessfulCuration\": {\n\
+          \      \"Type\": \"Task\",\n      \"Resource\": \"${RecordSuccessfulCurationArn}\"\
+          ,\n      \"Comment\": \"Records successful curatin in the curation history,\
+          \ and sends success SNS if configured.\",\n      \"Next\": \"FinishedProcessingSuccessfulFile\"\
+          ,\n      \"Catch\": [\n        {\n          \"ErrorEquals\": [\"RecordSuccessfulCurationException\"\
+          ,\"Exception\"],\n          \"ResultPath\": \"$.error-info\",\n        \
+          \  \"Next\": \"FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n\
+          \      \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n        \
+          \    \"Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n   \
+          \         \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
+          \n          ],\n          \"IntervalSeconds\": 2,\n          \"MaxAttempts\"\
+          : 4,\n          \"BackoffRate\": 1.5\n        },\n        {\n          \"\
+          ErrorEquals\": [\n            \"States.ALL\"\n          ],\n          \"\
+          IntervalSeconds\": 2,\n          \"MaxAttempts\": 4,\n          \"BackoffRate\"\
+          : 1.5\n        }\n      ]\n    },\n    \"RecordUnsuccessfulCuration\": {\n\
+          \      \"Type\": \"Task\",\n      \"Resource\": \"${RecordUnsuccessfulCurationArn}\"\
+          ,\n      \"Comment\": \"Records unsuccessful curatin in the curation history,\
+          \ and sends failure SNS if configured.\",\n      \"Next\": \"FinishedProcessingUnsuccessfulFile\"\
+          ,\n      \"Catch\": [\n        {\n          \"ErrorEquals\": [\"RecordUnsuccessfulCurationException\"\
+          ,\"Exception\"],\n          \"ResultPath\": \"$.error-info\",\n        \
+          \  \"Next\": \"FinishedProcessingUnsuccessfulFile\"\n        }\n      ],\n\
+          \      \"Retry\" : [\n        {\n          \"ErrorEquals\": [\n        \
+          \    \"Lambda.Unknown\",\n            \"Lambda.ServiceException\",\n   \
+          \         \"Lambda.AWSLambdaException\",\n            \"Lambda.SdkClientException\"\
+          \n          ],\n          \"IntervalSeconds\": 2,\n          \"MaxAttempts\"\
+          : 4,\n          \"BackoffRate\": 1.5\n        },\n        {\n          \"\
+          ErrorEquals\": [\n            \"States.ALL\"\n          ],\n          \"\
+          IntervalSeconds\": 2,\n          \"MaxAttempts\": 4,\n          \"BackoffRate\"\
+          : 1.5\n        }\n      ]\n    },\n\n    \"FinishedProcessingUnsuccessfulFile\"\
+          : {\n      \"Type\": \"Pass\",\n      \"Result\": \"Fail\",\n      \"End\"\
+          : true\n    },\n\n    \"FinishedProcessingSuccessfulFile\": {\n      \"\
+          Type\": \"Pass\",\n      \"Result\": \"Success\",\n      \"End\": true\n\
+          \    }\n  }\n}"
         - RetrieveDetailsArn:
             Fn::GetAtt:
             - RetrieveDetails
@@ -406,7 +430,25 @@ Resources:
             Fn::GetAtt:
             - UpdateOutputDetails
             - Arn
+          RecordSuccessfulCurationArn:
+            Fn::GetAtt:
+            - RecordSuccessfulCuration
+            - Arn
+          RecordUnsuccessfulCurationArn:
+            Fn::GetAtt:
+            - RecordUnsuccessfulCuration
+            - Arn
       RoleArn:
         Fn::GetAtt:
         - StatesExecutionRole
         - Arn
+Outputs:
+  StartCurationProcessArn:
+    Description: The ARN of the Start Curation Process Funciton
+    Value:
+      Fn::GetAtt:
+      - StartCurationProcessing
+      - Arn
+    Export:
+      Name:
+        Fn::Sub: ${EnvironmentPrefix}-StartCurationProcessFunctionArn

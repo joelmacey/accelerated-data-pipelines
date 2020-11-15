@@ -28,7 +28,7 @@ def get_existing_path(s3_path):
 
 def update_filename(bucket, key, filename):    
 	path = ('/').join(key.split('/')[:-1]) 
-	
+	filename = f'{filename}.csv'
 	s3 = boto3.resource('s3')
 	s3.Object(bucket,f'{path}/{filename}').copy_from(CopySource=f'{bucket}/{key}')
 	s3.Object(bucket,key).delete()
@@ -74,7 +74,10 @@ def update_output_details(event, context):
 		delete_object(f'{queryOutputKey}.metadata', queryOutputBucket)
 	
 	if event['outputFilename'] != None:
-		queryOutputKey = update_filename(queryOutputBucket, queryOutputKey, event['outputFilename'])
+		filename = event['outputFilename']
+		if event['includeTimestampInFilenameBool'] == True:
+			filename = f'{filename}-{event['curationDetails']['curationTimestamp']}'
+		queryOutputKey = update_filename(queryOutputBucket, queryOutputKey, filename)
 		event.update({"queryOutputLocation": queryOutputKey})
 	
 	metadata = event['requiredMetadata']

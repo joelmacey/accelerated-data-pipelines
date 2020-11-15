@@ -201,11 +201,13 @@ Resources:
       Description: Retrieves the details from the curation details dynamodb table.
       MemorySize: 128
       Timeout: 300
+      Role: !GetAtt [ LambdaExecutionRole, Arn ]
       Policies: 
         - DynamoDBCrudPolicy:
             TableName:
               Fn::ImportValue:
                 !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+        
   
   ValidateDetails:
     Type: 'AWS::Serverless::Function'
@@ -254,7 +256,41 @@ Resources:
       MemorySize: 128
       Timeout: 300
       Role: !GetAtt [ LambdaExecutionRole, Arn ]
-
+    
+  RecordSuccessfulCuration:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-record-successful-curation"
+      Handler: recordSuccessfulCuration.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/recordSuccessfulCuration.py
+      Description: Records successful curatin in the curation histroy, and sends success SNS if configured.
+      MemorySize: 128
+      Timeout: 300
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: 
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+        - SNSPublishMessagePolicy:
+            TopicName: '*'
+  RecordUnsuccessfulCuration:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      FunctionName: !Sub "${EnvironmentPrefix}-record-unsuccessful-curation"
+      Handler: recordUnsuccessfulCuration.lambda_handler
+      Runtime: python3.6
+      CodeUri: ./src/recordUnsuccessfulCuration.py
+      Description: Records unsuccessful curatin in the curation histroy, and sends success SNS if configured.
+      MemorySize: 128
+      Timeout: 300
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: 
+              Fn::ImportValue:
+                !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
+        - SNSPublishMessagePolicy:
+            TopicName: '*'
   QueryProcessor:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -274,7 +310,7 @@ Resources:
                   {
                     "ErrorEquals": ["RetrieveCurationDetailsException","Exception"],
                     "ResultPath": "$.error-info",
-                    "Next": "FinishedProcessingUnsuccessfulFile"
+                    "Next": "RecordUnsuccessfulCuration"
                   }
                 ],
                 "Retry" : [
@@ -309,7 +345,7 @@ Resources:
                   {
                     "ErrorEquals": ["ValidateDetailsException","Exception"],
                     "ResultPath": "$.error-info",
-                    "Next": "FinishedProcessingUnsuccessfulFile"
+                    "Next": "RecordUnsuccessfulCuration"
                   }
                 ],
                 "Retry" : [
@@ -344,7 +380,7 @@ Resources:
                   {
                     "ErrorEquals": ["StartQueryExecutionException","Exception"],
                     "ResultPath": "$.error-info",
-                    "Next": "FinishedProcessingUnsuccessfulFile"
+                    "Next": "RecordUnsuccessfulCuration"
                   }
                 ],
                 "Retry" : [
@@ -385,7 +421,7 @@ Resources:
                   {
                     "ErrorEquals": ["StartQueryExecutionException","Exception"],
                     "ResultPath": "$.error-info",
-                    "Next": "FinishedProcessingUnsuccessfulFile"
+                    "Next": "RecordUnsuccessfulCuration"
                   }
                 ],
                 "Retry" : [
@@ -422,7 +458,7 @@ Resources:
                   {
                     "Variable": "$.queryStatus",
                     "StringEquals": "FAILED",
-                    "Next": "FinishedProcessingUnsuccessfulFile"
+                    "Next": "RecordUnsuccessfulCuration"
                   }
                 ],
                 "Default": "GetQueryExecutionStatus"
@@ -431,10 +467,78 @@ Resources:
                 "Type": "Task",
                 "Resource": "${UpdateOutputDetailsArn}",
                 "Comment": "Update the output file with details defined in the dynamodb item.",
-                "Next": "FinishedProcessingSuccessfulFile",
+                "Next": "RecordSuccessfulCuration",
                 "Catch": [
                   {
                     "ErrorEquals": ["StartQueryExecutionException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "RecordUnsuccessfulCuration"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              },
+              "RecordSuccessfulCuration": {
+                "Type": "Task",
+                "Resource": "${RecordSuccessfulCurationArn}",
+                "Comment": "Records successful curatin in the curation history, and sends success SNS if configured.",
+                "Next": "FinishedProcessingSuccessfulFile",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["RecordSuccessfulCurationException","Exception"],
+                    "ResultPath": "$.error-info",
+                    "Next": "FinishedProcessingUnsuccessfulFile"
+                  }
+                ],
+                "Retry" : [
+                  {
+                    "ErrorEquals": [
+                      "Lambda.Unknown",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  },
+                  {
+                    "ErrorEquals": [
+                      "States.ALL"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 4,
+                    "BackoffRate": 1.5
+                  }
+                ]
+              },
+              "RecordUnsuccessfulCuration": {
+                "Type": "Task",
+                "Resource": "${RecordUnsuccessfulCurationArn}",
+                "Comment": "Records unsuccessful curatin in the curation history, and sends failure SNS if configured.",
+                "Next": "FinishedProcessingUnsuccessfulFile",
+                "Catch": [
+                  {
+                    "ErrorEquals": ["RecordUnsuccessfulCurationException","Exception"],
                     "ResultPath": "$.error-info",
                     "Next": "FinishedProcessingUnsuccessfulFile"
                   }
@@ -481,10 +585,13 @@ Resources:
           StartQueryExecutionArn: !GetAtt [StartQueryExecution, Arn]
           GetQueryExecutionStatusArn: !GetAtt [GetQueryExecutionStatus, Arn]
           UpdateOutputDetailsArn: !GetAtt [UpdateOutputDetails, Arn]
-          # CalculateMetaDataForFileArn: !GetAtt [CalculateMetaDataForFile, Arn]
-          # RecordSuccessfulStagingArn: !GetAtt [RecordSuccessfulStaging, Arn]
-          # CopyFileFromRawToStagingArn: !GetAtt [CopyFileFromRawToStaging, Arn]
-          # CopyFileFromRawToFailedArn: !GetAtt [CopyFileFromRawToFailed, Arn]
-          # DeleteRawFileArn: !GetAtt [DeleteRawFile, Arn]
-          # RecordFailedStagingArn: !GetAtt [RecordFailedStaging, Arn]
+          RecordSuccessfulCurationArn: !GetAtt [RecordSuccessfulCuration, Arn]
+          RecordUnsuccessfulCurationArn: !GetAtt [RecordUnsuccessfulCuration, Arn]
       RoleArn: !GetAtt [ StatesExecutionRole, Arn ]
+
+Outputs:
+  StartCurationProcessArn:
+    Description: The ARN of the Start Curation Process Funciton
+    Value: !GetAtt [StartCurationProcessing, Arn]
+    Export:
+      Name: !Sub "${EnvironmentPrefix}-StartCurationProcessFunctionArn"  

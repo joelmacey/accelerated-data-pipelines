@@ -9,6 +9,16 @@ class RetrieveCurationDetailsException(Exception):
 
 dynamodb = boto3.resource('dynamodb')
 
+def get_code_commit_file(repo, filePath):
+ 
+    client = boto3.client('codecommit')
+
+    response = client.get_file(
+        repositoryName=repo,
+        filePath=filePath
+    )
+    return response
+
 
 def lambda_handler(event, context):
     '''
@@ -67,13 +77,23 @@ def attach_file_settings_to_event(event, context):
     output_filename = item['outputDetails']['filename'] \
         if 'filename' in item['outputDetails'] \
         else None
-    deleteMetadataFileBool = item['outputDetails']['deleteMetadataFile'] \
-        if 'deleteMetadataFile' in item['outputDetails'] \
-        else False
+    if 'deleteMetadataFile' in item['outputDetails'] and item['outputDetails']['deleteMetadataFile'] == True:
+        deleteMetadataFileBool = True    
+    else:
+        deleteMetadataFileBool = False
+    if 'includeTimestampInFilename' in item['outputDetails'] and item['outputDetails']['includeTimestampInFilename'] == True:
+        includeTimestampInFilenameBool = True    
+    else:
+        includeTimestampInFilenameBool = False
+        
     event.update({'scriptFilePath': item['sqlFilePath']})
     event.update({'glueDetails': item['glueDetails']})
     event.update({'outputFilename': output_filename})
     event.update({'deleteMetadataFileBool': deleteMetadataFileBool})
+    event.update({'includeTimestampInFilenameBool': includeTimestampInFilenameBool})
     event.update({'outputFolderPath': item['outputDetails']['outputFolderPath']})
     event.update({'requiredMetadata': item['outputDetails']['metadata']})
     event.update({'requiredTags': item['outputDetails']['tags']})
+    
+    code_commit_res = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
+    event.update({'scriptFileCommitId':code_commit_res['commitId']})

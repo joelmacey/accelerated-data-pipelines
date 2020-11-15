@@ -13,7 +13,7 @@ Resources:
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
-      RoleName: !Sub "${EnvironmentPrefix}-accelerated-query-role"
+      RoleName: !Sub "${EnvironmentPrefix}-schedule-event-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -35,6 +35,27 @@ Resources:
                   - events:PutRule
                   - events:PutTargets
                 Resource: "*"
+        - PolicyName: DynamoDBStreamSubscribe
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeStream
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:ListStreams              
+                Resource:
+                  Fn::ImportValue:
+                    !Sub "${EnvironmentPrefix}-CurationDetailsStreamARN"
+        - PolicyName: CloudwatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:*
+                Resource: "*"  
   # DynamoDB Stream for Curation Table
   CurationDetailsStream:
     Type: AWS::Lambda::EventSourceMapping
@@ -66,3 +87,8 @@ Resources:
             TableName:
               Fn::ImportValue:
                 !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
+      Environment:
+        Variables:
+          START_CURATION_PROCESS_FUNCTION_ARN: 
+            Fn::ImportValue:
+              !Sub "${EnvironmentPrefix}-StartCurationProcessFunctionArn"  
