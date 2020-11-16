@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates the DynamoDB and S3 structure of the Accelerated Query Pack.
+Description: Creates the DynamoDB tables, S3 buckets and Code commit repository structure for the Accelerated Data Pipelines.
 Parameters:
   # Prefix used for S3 Buckets and DynamomDB tables (so devo, gamma, prod etc can share account)
   EnvironmentPrefix:
@@ -145,6 +145,8 @@ Resources:
           Value: !Ref ProjectName
       TableName: !Sub '${EnvironmentPrefix}${CurationHistoryTableName}'
       BillingMode: PAY_PER_REQUEST      
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
   # S3 Buckets  
   AcceleratedQueryCodePackages:
     Type: 'AWS::S3::Bucket'
@@ -246,6 +248,11 @@ Outputs:
     Value: !Ref CurationHistoryTable
     Export:
       Name: !Sub "${EnvironmentPrefix}-CurationHistoryTableName"          
+  CurationHistoryStreamArn:
+    Description: The ARN of the Curation History Stream
+    Value: !GetAtt CurationHistoryTable.StreamArn
+    Export:
+      Name: !Sub "${EnvironmentPrefix}-CurationHistoryStreamARN" 
   S3CuratedName:
     Description: The name of the Curation S3 bucket created
     Value: !Ref S3Curation

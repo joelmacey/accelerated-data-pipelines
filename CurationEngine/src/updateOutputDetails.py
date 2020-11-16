@@ -78,7 +78,8 @@ def update_output_details(event, context):
 		if event['includeTimestampInFilenameBool'] == True:
 			filename = f'{filename}-{event['curationDetails']['curationTimestamp']}'
 		queryOutputKey = update_filename(queryOutputBucket, queryOutputKey, filename)
-		event.update({"queryOutputLocation": queryOutputKey})
+	
+	event.update({"queryOutputKey": queryOutputKey})
 	
 	metadata = event['requiredMetadata']
 

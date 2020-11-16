@@ -78,7 +78,7 @@ Resources:
       Handler: createNewEventRule.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/createNewEventRule.py
-      Description: Create a new event rule using the cron expression.
+      Description: Create a new event rule using the cron expression in the dynamodb entry.
       MemorySize: 128
       Timeout: 300
       Role: !GetAtt [ LambdaExecutionRole, Arn ]

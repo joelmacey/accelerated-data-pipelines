@@ -1,31 +1,34 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: Creates the Query Pack component of the Data Lake.
+Description: Creates the Curation Pipeline component of the Accelerated Data Pipeline.
 
 Parameters:
-  # CurationFailureTopicName:
-  #   Type: String
-  #   Default: datalake-curation-failure
-  #   Description: Please add a SNS topic name to receive failure notifications
+  CurationFailureTopicName:
+    Type: String
+    Default: curation-failure
+    Description: Please add a SNS topic name to receive failure notifications
+  CurationSuccessTopicName:
+    Type: String
+    Default: curation-success
+    Description: Please add a SNS topic name to receive successful notifications
 
   EnvironmentPrefix:
     Type: String
-    Description: Enter the environment prefix used for the DataLake structure (S3 Buckets and DynamoDB tables
+    Description: Enter the environment prefix used for the Accelerated Data Pipeline, used to reference storage structure
     MinLength: 3
     MaxLength: 19
     AllowedPattern: "[a-z][a-z0-9-]+"
 
-# Metadata:
-#   'AWS::CloudFormation::Interface':
-#     ParameterGroups:
-#       - Label:
-#           default: SNS Failure Notifications
-#         Parameters:
-#           - CurationFailureTopicName
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: SNS Notifications
+        Parameters:
+          - CurationSuccessTopicName
+          - CurationFailureTopicName
 
 Resources:
-   
-   # Roles - these need breaking down into finegrained roles for each lambda.
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -154,7 +157,7 @@ Resources:
                   - codecommit:ListRepositories
                 Resource: "*"
 
-  # Expected event: {"fileType": "sample_file"}
+  # Expected event: {"curationType": "sample_file"}
   StartCurationProcessing:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -162,7 +165,7 @@ Resources:
       Handler: startCurationProcessing.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/startCurationProcessing.py
-      Description: Initiates the Query Processing Step Function.
+      Description: Initiates the Curation Engine Processing Step Function.
       MemorySize: 128
       Timeout: 300
       Policies: 
@@ -208,7 +211,6 @@ Resources:
               Fn::ImportValue:
                 !Sub "${EnvironmentPrefix}-CurationDetailsTableName"
         
-  
   ValidateDetails:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -267,6 +269,9 @@ Resources:
       Description: Records successful curatin in the curation histroy, and sends success SNS if configured.
       MemorySize: 128
       Timeout: 300
+      Environment:
+        Variables:
+          SNS_SUCCESS_ARN: !Ref CurationSuccessTopicName   
       Policies:
         - DynamoDBCrudPolicy:
             TableName: 
@@ -274,6 +279,7 @@ Resources:
                 !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
         - SNSPublishMessagePolicy:
             TopicName: '*'
+
   RecordUnsuccessfulCuration:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -281,9 +287,12 @@ Resources:
       Handler: recordUnsuccessfulCuration.lambda_handler
       Runtime: python3.6
       CodeUri: ./src/recordUnsuccessfulCuration.py
-      Description: Records unsuccessful curatin in the curation histroy, and sends success SNS if configured.
+      Description: Records unsuccessful curation in the curation histroy, and sends failure SNS if configured.
       MemorySize: 128
       Timeout: 300
+      Environment:
+        Variables:
+          SNS_FAILURE_ARN: !Ref CurationFailureTopicName   
       Policies:
         - DynamoDBCrudPolicy:
             TableName: 
@@ -291,14 +300,14 @@ Resources:
                 !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
         - SNSPublishMessagePolicy:
             TopicName: '*'
-  QueryProcessor:
+  CurationEngine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
-      StateMachineName: !Sub "${EnvironmentPrefix}queryengine" 
+      StateMachineName: !Sub "${EnvironmentPrefix}curationengine" 
       DefinitionString: !Sub 
         - |-
           {
-            "Comment": "State machine to query data available in the data lake",
+            "Comment": "State machine to curate the data available in the data lake",
             "StartAt": "RetrieveDetails",
             "States": {
               "RetrieveDetails": {

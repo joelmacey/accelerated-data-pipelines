@@ -69,8 +69,8 @@ def lambda_handler(event, context):
 
 def create_new_event_rule(event, context):
 	"""
-	get_file_settings Retrieves the settings for the new file in the
-	data lake.
+	create_new_event_rule Creates a new event rule and event target in
+	event bridge to be used in the accelerated data pipelines.
 	:param event: AWS Lambda uses this to pass in event data.
 	:type event: Python type - Dict / list / int / string / float / None
 	:param context: AWS Lambda uses this to pass in runtime information.
@@ -78,19 +78,20 @@ def create_new_event_rule(event, context):
 	:return: The event object passed into the method
 	:rtype: Python type - Dict / list / int / string / float / None
 	"""
-	print(event)
 	ddb_deserializer = StreamTypeDeserializer()
 	records = event['Records']
 	start_curation_process_function_arn = os.environ['START_CURATION_PROCESS_FUNCTION_ARN']
 	for record in records:
 		ddb = record['dynamodb']
-		# Get the event type
+		# Get the event type and curation type for the record
 		event_name = record['eventName'].upper()  # INSERT, MODIFY, REMOVE
-		print(event_name)
 		doc_fields = ddb_deserializer.deserialize({'M': ddb['NewImage']})
-		if (event_name == 'INSERT') or (event_name == 'MODIFY'):
-			print(doc_fields['curationType'])
-			put_rule(doc_fields['curationType'], doc_fields['cronExpression'])
-			put_target(doc_fields['curationType'], start_curation_process_function_arn)
+		curation_type = doc_fields['curationType']
 		
-	return event
+		print(f'Handling for event {event_name} for curationType {curation_type}')
+		
+		if (event_name == 'INSERT') or (event_name == 'MODIFY'):
+			put_rule(curation_type, doc_fields['cronExpression'])
+			put_target(curation_type, start_curation_process_function_arn)
+		
+	return 'Success'

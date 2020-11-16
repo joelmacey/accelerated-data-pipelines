@@ -36,8 +36,8 @@ def lambda_handler(event, context):
 
 def record_unsuccessfull_curation(event, context):
     """
-    record_unsuccessfull_curation Records the successful staging in the data
-    catalog and raises an SNS notification.
+    record_unsuccessfull_curation Records the unsuccessful curation 
+    in the curation history table and sends an SNS notification.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -46,14 +46,14 @@ def record_unsuccessfull_curation(event, context):
     :rtype: Python type - Dict / list / int / string / float / None
     """
     record_unsuccessful_curation_in_curation_history(event, context)
-    # send_successful_staging_sns(event, context)
+    send_unsuccessful_curation_sns(event, context)
     return event
 
 
 def record_unsuccessful_curation_in_curation_history(event, context):
     '''
-    record_unsuccessful_curation_in_curation_history Records the successful staging
-    in the data catalog.
+    record_unsuccessful_curation_in_curation_history Records the unsuccessful 
+    curation in the curation history table.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -93,3 +93,37 @@ def record_unsuccessful_curation_in_curation_history(event, context):
         traceback.print_exc()
         raise RecordUnsuccessfulCurationException(e)
 
+
+def send_unsuccessful_curation_sns(event, context):
+    '''
+    send_unsuccessful_curation_sns Sends an SNS notifying subscribers
+    that curation has failed.
+    :param event: AWS Lambda uses this to pass in event data.
+    :type event: Python type - Dict / list / int / string / float / None
+    :param context: AWS Lambda uses this to pass in runtime information.
+    :type context: LambdaContext
+    '''
+    curationType = event['curationDetails']['curationType']
+    error = event['error-info']['Error']
+    error_cause = json.loads(event['error-info']['Cause'])
+        
+    subject = f'Data Pipeline - curation for {curationType} has failed'
+    message = f'The curation for {curationType} has failed due to {error} with detail:\n{error_cause}'
+
+    if 'SNS_FAILURE_ARN' in os.environ:
+        failureSNSTopicARN = os.environ['SNS_FAILURE_ARN']
+        send_sns(failureSNSTopicARN, subject, message)
+
+
+def send_sns(topic_arn, subject, message):
+    '''
+    send_sns Sends an SNS with the given subject and message to the
+    specified ARN.
+    :param topic_arn: The SNS ARN to send the notification to
+    :type topic_arn: Python String
+    :param subject: The subject of the SNS notification
+    :type subject: Python String
+    :param message: The SNS notification message
+    :type message: Python String
+    '''
+    sns_client.publish(TopicArn=topic_arn, Subject=subject, Message=message)

@@ -1,7 +1,7 @@
 # Record a failed curation in history table
 import time
 import traceback
-
+import os
 import boto3
 
 
@@ -36,8 +36,8 @@ def lambda_handler(event, context):
 
 def record_successfull_curation(event, context):
     """
-    record_successfull_curation Records the successful staging in the data
-    catalog and raises an SNS notification.
+    record_successfull_curation Records the successful curation in the
+    curation history table and sends an SNS notification.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -46,14 +46,14 @@ def record_successfull_curation(event, context):
     :rtype: Python type - Dict / list / int / string / float / None
     """
     record_successful_curation_in_curation_history(event, context)
-    # send_successful_staging_sns(event, context)
+    send_successful_curation_sns(event, context)
     return event
 
 
 def record_successful_curation_in_curation_history(event, context):
     '''
-    record_successful_curation_in_curation_history Records the successful staging
-    in the data catalog.
+    record_successful_curation_in_curation_history Records the successful 
+    curation in the curation history table
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -90,38 +90,35 @@ def record_successful_curation_in_curation_history(event, context):
         raise RecordSuccessfulCurationException(e)
 
 
-# def send_successful_curation_sns(event, context):
-#     '''
-#     send_successful_staging_sns Sends an SNS notifying subscribers
-#     that staging was successful.
-#     :param event: AWS Lambda uses this to pass in event data.
-#     :type event: Python type - Dict / list / int / string / float / None
-#     :param context: AWS Lambda uses this to pass in runtime information.
-#     :type context: LambdaContext
-#     '''
-#     curationType = event['curationDetails']['curationType']
-#     raw_bucket = event['fileDetails']['bucket']
-#     file_type = event['fileType']
+def send_successful_curation_sns(event, context):
+    '''
+    send_successful_curation_sns Sends an SNS notifying subscribers
+    that curation was successful.
+    :param event: AWS Lambda uses this to pass in event data.
+    :type event: Python type - Dict / list / int / string / float / None
+    :param context: AWS Lambda uses this to pass in runtime information.
+    :type context: LambdaContext
+    '''
+    curationType = event['curationDetails']['curationType']
+    queryOutputLocation = event['queryOutputLocation']
+        
+    subject = f'Data Pipeline - curation for {curationType} success'
+    message = f'The output of your curation can be found: {queryOutputLocation}'
 
-#     subject = 'Data Lake - ingressed file staging success'
-#     message = 'File:{} in Bucket:{} for DataSource:{} successfully staged' \
-#         .format(raw_key, raw_bucket, file_type)
-
-#     if 'fileSettings' in event \
-#             and 'successSNSTopicARN' in event['fileSettings']:
-#         successSNSTopicARN = event['fileSettings']['successSNSTopicARN']
-#         send_sns(successSNSTopicARN, subject, message)
+    if 'SNS_SUCCESS_ARN' in os.environ:
+        successSNSTopicARN = os.environ['SNS_SUCCESS_ARN']
+        send_sns(successSNSTopicARN, subject, message)
 
 
-# def send_sns(topic_arn, subject, message):
-#     '''
-#     send_sns Sends an SNS with the given subject and message to the
-#     specified ARN.
-#     :param topic_arn: The SNS ARN to send the notification to
-#     :type topic_arn: Python String
-#     :param subject: The subject of the SNS notification
-#     :type subject: Python String
-#     :param message: The SNS notification message
-#     :type message: Python String
-#     '''
-#     sns_client.publish(TopicArn=topic_arn, Subject=subject, Message=message)
+def send_sns(topic_arn, subject, message):
+    '''
+    send_sns Sends an SNS with the given subject and message to the
+    specified ARN.
+    :param topic_arn: The SNS ARN to send the notification to
+    :type topic_arn: Python String
+    :param subject: The subject of the SNS notification
+    :type subject: Python String
+    :param message: The SNS notification message
+    :type message: Python String
+    '''
+    sns_client.publish(TopicArn=topic_arn, Subject=subject, Message=message)

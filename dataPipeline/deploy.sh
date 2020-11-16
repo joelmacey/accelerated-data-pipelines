@@ -1,2 +1,0 @@
-sam package --template-file ./queryPack.yml --output-template-file queryPackDeploy.yml --s3-bucket tdfv1wadatahub-test-acceleratedquerycodepackages
-sam deploy --template-file ./queryPackDeploy.yml --stack-name tdfv1-wadatahub-test-query-pack --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=test

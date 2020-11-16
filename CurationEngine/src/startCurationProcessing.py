@@ -16,7 +16,6 @@ class StartCurationProcessingException(Exception):
     pass
 
 
-sns = boto3.client('sns')
 sfn = boto3.client('stepfunctions')
 dynamodb = boto3.resource('dynamodb')
 curation_details_table = os.environ['CURATION_DETAILS_TABLE_NAME']
