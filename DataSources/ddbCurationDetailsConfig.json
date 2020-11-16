@@ -1,0 +1,25 @@
+{
+ "curationType": "wildrydes-rydebooking",
+ "sqlFilePath": "wildrydes/rydebooking-curation.sql",
+ "cronExpression": "cron(0 20 * * ? *)",
+ "glueDetails": {
+     "database": "wildrydes",
+     "table": "rydebookings"
+ },
+ "outputDetails": {
+    "deleteMetadataFile": true,
+    "filename": "wildrydes",
+    "includeTimestampInFilename": true,
+    "outputFolderPath": "wildrydes/",
+    "metadata": {
+        "creator": "Eunice the Unicorn",
+        "quality": "HIGH",
+        "sourcesystem": "Curation Engine Demonstration"
+      },
+    "tags": {
+        "dataOwner": "Wildrydes",
+        "dataSource": "RydeBookings",
+        "pii": "FALSE"
+      }
+ }
+}

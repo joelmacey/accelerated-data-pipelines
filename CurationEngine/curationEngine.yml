@@ -186,7 +186,7 @@ Resources:
           CURATION_HISTORY_TABLE_NAME: 
             Fn::ImportValue:
               !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
-          STEP_FUNCTION: !Ref QueryProcessor
+          STEP_FUNCTION: !Ref CurationEngine
           CURATION_BUCKET_NAME:
             Fn::ImportValue:
               !Sub "${EnvironmentPrefix}-S3Curation-Name"

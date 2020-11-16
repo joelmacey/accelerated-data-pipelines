@@ -120,7 +120,7 @@ Resources:
       StreamSpecification:
         StreamViewType: NEW_IMAGE
   # S3 Buckets  
-  AcceleratedQueryCodePackages:
+  AcceleratedDataPipelinesCodePackages:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName:
