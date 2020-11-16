@@ -156,7 +156,18 @@ Resources:
                   - codecommit:GetRepository
                   - codecommit:ListRepositories
                 Resource: "*"
-
+  
+  CurationSuccessSNS:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: SNS topic that curation success notifications are sent to.
+      TopicName: !Sub "${EnvironmentPrefix}${CurationSuccessTopicName}" 
+  
+  CurationFailureSNS:
+    Type: AWS::SNS::Topic
+    Properties: 
+      DisplayName: SNS topic that curation failure notifications are sent to.
+      TopicName: !Sub "${EnvironmentPrefix}${CurationFailureTopicName}" 
   # Expected event: {"curationType": "sample_file"}
   StartCurationProcessing:
     Type: 'AWS::Serverless::Function'
@@ -271,7 +282,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SNS_SUCCESS_ARN: !Ref CurationSuccessTopicName   
+          SNS_SUCCESS_ARN: !Ref CurationSuccessSNS   
       Policies:
         - DynamoDBCrudPolicy:
             TableName: 
@@ -292,7 +303,7 @@ Resources:
       Timeout: 300
       Environment:
         Variables:
-          SNS_FAILURE_ARN: !Ref CurationFailureTopicName   
+          SNS_FAILURE_ARN: !Ref CurationFailureSNS   
       Policies:
         - DynamoDBCrudPolicy:
             TableName: 
