@@ -23,7 +23,7 @@ Parameters:
 
   CodeCommitScriptsName:
     Type: String
-    Default: scripts
+    Default: curation-scripts
     Description: Enter the name of the codecommit repo for scripts.
     MinLength: 3
     MaxLength: 63

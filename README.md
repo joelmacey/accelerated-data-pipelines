@@ -65,3 +65,6 @@ sam package --template-file ./scheduleSetup.yml --output-template-file scheduleS
 
 sam deploy --template-file scheduleSetupDeploy.yml --stack-name wildrydes-dev-schedule-streams --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=wildrydes-dev-
 ````
+
+# Architecture
+![alt text](Resources/Architecture.jpeg)
