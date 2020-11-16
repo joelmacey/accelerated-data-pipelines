@@ -124,7 +124,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName:
-        !Sub "${EnvironmentPrefix}-acceleratedquerycodepackages"
+        !Sub "${EnvironmentPrefix}-accelerated-data-pipelines-codepackages"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
