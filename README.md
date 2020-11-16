@@ -67,4 +67,4 @@ sam deploy --template-file scheduleSetupDeploy.yml --stack-name wildrydes-dev-sc
 ````
 
 # Architecture
-![Architecture Diagram](Resources/Architecture.png | width=200)
+![Architecture Diagram](Resources/Architecture.png)
