@@ -91,6 +91,7 @@ def attach_file_settings_to_event(event, context):
     event.update({'outputFilename': output_filename})
     event.update({'deleteMetadataFileBool': deleteMetadataFileBool})
     event.update({'includeTimestampInFilenameBool': includeTimestampInFilenameBool})
+    event.update({'outputBucket': item['outputDetails']['outputBucket']})
     event.update({'outputFolderPath': item['outputDetails']['outputFolderPath']})
     event.update({'requiredMetadata': item['outputDetails']['metadata']})
     event.update({'requiredTags': item['outputDetails']['tags']})

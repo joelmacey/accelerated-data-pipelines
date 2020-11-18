@@ -198,20 +198,17 @@ Resources:
             Fn::ImportValue:
               !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
           STEP_FUNCTION: !Ref CurationEngine
-          CURATION_BUCKET_NAME:
-            Fn::ImportValue:
-              !Sub "${EnvironmentPrefix}-S3Curation-Name"
           SCRIPTS_REPO_NAME:
             Fn::ImportValue:
               !Sub "${EnvironmentPrefix}-CodeCommitScriptsRepo-Name"
   
-  RetrieveDetails:
+  RetrieveCurationDetails:
     Type: 'AWS::Serverless::Function'
     Properties:
       FunctionName: !Sub "${EnvironmentPrefix}-retrieve-details"
       Handler: retrieveDetails.lambda_handler
       Runtime: python3.6
-      CodeUri: ./src/retrieveDetails.py
+      CodeUri: ./src/retrieveCurationDetails.py
       Description: Retrieves the details from the curation details dynamodb table.
       MemorySize: 128
       Timeout: 300
@@ -319,11 +316,11 @@ Resources:
         - |-
           {
             "Comment": "State machine to curate the data available in the data lake",
-            "StartAt": "RetrieveDetails",
+            "StartAt": "RetrieveCurationDetails",
             "States": {
-              "RetrieveDetails": {
+              "RetrieveCurationDetails": {
                 "Type": "Task",
-                "Resource": "${RetrieveDetailsArn}",
+                "Resource": "${RetrieveCurationDetailsArn}",
                 "Comment": "Retrieves the details that are within the dynamodb entry.",
                 "Next": "ValidateDetails",
                 "Catch": [
@@ -600,7 +597,7 @@ Resources:
             }
           }
           
-        - RetrieveDetailsArn: !GetAtt [RetrieveDetails, Arn]
+        - RetrieveCurationDetailsArn: !GetAtt [RetrieveCurationDetails, Arn]
           ValidateDetailsArn: !GetAtt [ValidateDetails, Arn]
           StartQueryExecutionArn: !GetAtt [StartQueryExecution, Arn]
           GetQueryExecutionStatusArn: !GetAtt [GetQueryExecutionStatus, Arn]

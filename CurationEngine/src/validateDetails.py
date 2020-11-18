@@ -33,11 +33,6 @@ def does_table_exist(database, table):
         Name=table
     )
 
-def does_output_bucket_exist(bucket):
-    s3 = boto3.resource('s3')
-
-    s3.Bucket(bucket) in s3.buckets.all()
-
 def lambda_handler(event, context):
     '''
     lambda_handler Top level lambda handler ensuring all exceptions
@@ -77,5 +72,4 @@ def validate_details(event, context):
 
     does_table_exist(event['glueDetails']['database'], event['glueDetails']['table'])
 
-    does_output_bucket_exist(event['settings']['curationBucket'])
     return event

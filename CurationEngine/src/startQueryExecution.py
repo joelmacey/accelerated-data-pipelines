@@ -53,7 +53,7 @@ def start_query_execution(event, context):
     """
     sql_query = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
     
-    curation_bucket = event['settings']['curationBucket']
+    curation_bucket = event['outputBucket']
     curation_path = event['outputFolderPath'] #test-curation/
     output_location = f's3://{curation_bucket}/{curation_path}' 
     print(output_location)

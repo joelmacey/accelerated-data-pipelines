@@ -89,8 +89,6 @@ def start_step_function_for_event(curationType):
                     os.environ['CURATION_DETAILS_TABLE_NAME'],
                 'curationHistoryTableName':
                     os.environ['CURATION_HISTORY_TABLE_NAME'],
-                'curationBucket':
-                    os.environ['CURATION_BUCKET_NAME'],
                 'scriptsRepo':
                     os.environ['SCRIPTS_REPO_NAME']
             }
