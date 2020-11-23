@@ -6,11 +6,11 @@ Parameters:
   CurationFailureTopicName:
     Type: String
     Default: curation-failure
-    Description: Please add a SNS topic name to receive failure notifications
+    Description: The SNS topic name to receive failure notifications
   CurationSuccessTopicName:
     Type: String
     Default: curation-success
-    Description: Please add a SNS topic name to receive successful notifications
+    Description: The SNS topic name to receive successful notifications
 
   EnvironmentPrefix:
     Type: String
@@ -29,6 +29,7 @@ Metadata:
           - CurationFailureTopicName
 
 Resources:
+# IAM Roles
   StatesExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -156,7 +157,7 @@ Resources:
                   - codecommit:GetRepository
                   - codecommit:ListRepositories
                 Resource: "*"
-  
+# SNS Topics
   CurationSuccessSNS:
     Type: AWS::SNS::Topic
     Properties: 
@@ -168,6 +169,8 @@ Resources:
     Properties: 
       DisplayName: SNS topic that curation failure notifications are sent to.
       TopicName: !Sub "${EnvironmentPrefix}${CurationFailureTopicName}" 
+
+# Lambda Functions
   # Expected event: {"curationType": "sample_file"}
   StartCurationProcessing:
     Type: 'AWS::Serverless::Function'
@@ -308,6 +311,8 @@ Resources:
                 !Sub "${EnvironmentPrefix}-CurationHistoryTableName"
         - SNSPublishMessagePolicy:
             TopicName: '*'
+
+# Step Function State Machine Definition
   CurationEngine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -608,7 +613,7 @@ Resources:
 
 Outputs:
   StartCurationProcessArn:
-    Description: The ARN of the Start Curation Process Funciton
+    Description: The ARN of the Start Curation Process Function # This is used by the StreamSchedules 
     Value: !GetAtt [StartCurationProcessing, Arn]
     Export:
       Name: !Sub "${EnvironmentPrefix}-StartCurationProcessFunctionArn"  

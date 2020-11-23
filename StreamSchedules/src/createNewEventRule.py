@@ -1,6 +1,7 @@
 import traceback
 import os
 import json
+
 import boto3
 import botocore
 from boto3.dynamodb.types import TypeDeserializer
@@ -17,35 +18,6 @@ class StreamTypeDeserializer(TypeDeserializer):
     def _deserialize_b(self, value):
         return value  # Already in Base64
 
-def put_rule(curation_type, schedule_expression):
-	
-	client = boto3.client('events')
-
-	response = client.put_rule(
-		Name=f'{curation_type}-event-rule',
-		ScheduleExpression=schedule_expression,
-		State='ENABLED',
-		Description=f'Event rule for curation type {curation_type}'
-	)
-def delete_rule(curation_type):
-	client = boto3.client('events')
-
-	response = client.delete_rule(
-    	Name=f'{curation_type}-event-rule',
-	)
-def put_target(curation_type, function_arn):
-	client = boto3.client('events')
-	input = {"curationType": curation_type}
-	response = client.put_targets(
-	    Rule=f'{curation_type}-event-rule',
-	    Targets=[
-	        {
-	            'Id': f'{curation_type}-event-target',
-	            'Arn': function_arn,
-	            'Input': json.dumps(input)
-	        }
-	    ]
-	)
 def lambda_handler(event, context):
 	'''
 	lambda_handler Top level lambda handler ensuring all exceptions
@@ -65,7 +37,6 @@ def lambda_handler(event, context):
 	except Exception as e:
 		traceback.print_exc()
 		raise CreateNewEventRuleException(e)
-
 
 def create_new_event_rule(event, context):
 	"""
@@ -88,10 +59,46 @@ def create_new_event_rule(event, context):
 		doc_fields = ddb_deserializer.deserialize({'M': ddb['NewImage']})
 		curation_type = doc_fields['curationType']
 		
-		print(f'Handling for event {event_name} for curationType {curation_type}')
+		print(f'Creating or modifying event for curationType {curation_type}')
 		
 		if (event_name == 'INSERT') or (event_name == 'MODIFY'):
 			put_rule(curation_type, doc_fields['cronExpression'])
 			put_target(curation_type, start_curation_process_function_arn)
 		
 	return 'Success'
+
+def put_rule(curation_type, schedule_expression):
+	
+	client = boto3.client('events')
+
+	response = client.put_rule(
+		Name=f'{curation_type}-event-rule',
+		ScheduleExpression=schedule_expression,
+		State='ENABLED',
+		Description=f'Event rule for curation type {curation_type}'
+	)
+
+def delete_rule(curation_type):
+	
+	client = boto3.client('events')
+
+	response = client.delete_rule(
+    	Name=f'{curation_type}-event-rule',
+	)
+
+def put_target(curation_type, function_arn):
+	
+	client = boto3.client('events')
+
+	input = {"curationType": curation_type}
+
+	response = client.put_targets(
+	    Rule=f'{curation_type}-event-rule',
+	    Targets=[
+	        {
+	            'Id': f'{curation_type}-event-target',
+	            'Arn': function_arn,
+	            'Input': json.dumps(input)
+	        }
+	    ]
+	)

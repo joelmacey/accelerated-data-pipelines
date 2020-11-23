@@ -137,7 +137,6 @@ Outputs:
     Value: !GetAtt CurationDetailsTable.StreamArn
     Export:
       Name: !Sub "${EnvironmentPrefix}-CurationDetailsStreamARN"   
-  
   CurationHistoryTableName:
     Description: The name of the Curation History DDBTable
     Value: !Ref CurationHistoryTable
@@ -148,7 +147,6 @@ Outputs:
     Value: !GetAtt CurationHistoryTable.StreamArn
     Export:
       Name: !Sub "${EnvironmentPrefix}-CurationHistoryStreamARN" 
-  
   CodeCommitScriptsName:
     Description: The name of the codecommit repo created for scripts
     Value: !GetAtt CodeCommitScriptsRepo.Name

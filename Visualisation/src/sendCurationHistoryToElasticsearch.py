@@ -12,7 +12,6 @@ from botocore.endpoint import BotocoreHTTPSession
 from botocore.session import Session
 from boto3.dynamodb.types import TypeDeserializer
 
-
 elasticsearch_endpoint = os.environ['ELASTICSEARCH_ENDPOINT']
 # Python formatter to generate index name from the DynamoDB
 # table name

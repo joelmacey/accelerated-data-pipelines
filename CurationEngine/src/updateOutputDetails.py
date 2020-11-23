@@ -1,39 +1,9 @@
-# Add tags, metadata, and filename (if applicable)
-
 import traceback
 
 import boto3
-import botocore
-
-s3 = boto3.client('s3')
 
 class UpdateOutputDetailsException(Exception):
 	pass
-
-def delete_object(key, bucket):
-	client = boto3.client('s3')
-	response = client.delete_object(
-		Bucket=bucket,
-		Key=key
-	)
-
-def get_bucket(s3_path):
-	bucket = s3_path.split('/')[2]
-	return bucket
-
-def get_existing_path(s3_path):
-	folders = s3_path.split('/')[3:]
-	folders ="/".join(folders)
-	return folders	
-
-def update_filename(bucket, key, filename):    
-	path = ('/').join(key.split('/')[:-1]) 
-	filename = f'{filename}.csv'
-	s3 = boto3.resource('s3')
-	s3.Object(bucket,f'{path}/{filename}').copy_from(CopySource=f'{bucket}/{key}')
-	s3.Object(bucket,key).delete()
-	
-	return f'{path}/{filename}'
 
 def lambda_handler(event, context):
 	'''
@@ -55,11 +25,10 @@ def lambda_handler(event, context):
 		traceback.print_exc()
 		raise UpdateOutputDetailsException(e)
 
-
 def update_output_details(event, context):
 	"""
-	get_file_settings Retrieves the settings for the new file in the
-	data lake.
+	update_output_details Once the query is successful, update 
+	with additional details such as tags, metadata and defined filename.
 	:param event: AWS Lambda uses this to pass in event data.
 	:type event: Python type - Dict / list / int / string / float / None
 	:param context: AWS Lambda uses this to pass in runtime information.
@@ -85,13 +54,8 @@ def update_output_details(event, context):
 	metadata = event['requiredMetadata']
 
 	# Copy the file into location in order to apply metadata
-	copy_source = {'Bucket': queryOutputBucket, 'Key': queryOutputKey}
-	s3.copy(
-		copy_source,
-		queryOutputBucket,
-		queryOutputKey,
-		ExtraArgs={"Metadata": metadata, "MetadataDirective": "REPLACE"})
-	
+	update_metadata_on_object(queryOutputBucket, queryOutputKey ,metadata)
+
 	# Generate the tag list.
 	tagList = []
 	for tagKey in event['requiredTags']:
@@ -99,9 +63,56 @@ def update_output_details(event, context):
 		tagList.append(tag)
 
 	# Apply the tag list.
-	s3.put_object_tagging(
-		Bucket=queryOutputBucket,
-		Key=queryOutputKey,
-		Tagging={'TagSet': tagList})
+	put_tags_on_object(queryOutputBucket, queryOutputKey, tagList)
 
 	return event
+
+def update_metadata_on_object(bucket, key ,metadata):
+	client = boto3.client('s3')
+	
+	copy_source = {'Bucket': bucket, 'Key': key}
+
+	client.copy(
+		copy_source,
+		bucket,
+		key,
+		ExtraArgs={"Metadata": metadata, "MetadataDirective": "REPLACE"})
+
+def put_tags_on_object(bucket, key, tagList):
+	client = boto3.client('s3')
+
+	client.put_object_tagging(
+		Bucket=bucket,
+		Key=key,
+		Tagging={'TagSet': tagList})
+
+def delete_object(key, bucket):
+	client = boto3.client('s3')
+
+	response = client.delete_object(
+		Bucket=bucket,
+		Key=key
+	)
+
+def get_bucket(s3_path):
+	bucket = s3_path.split('/')[2]
+	
+	return bucket
+
+def get_existing_path(s3_path):
+	folders = s3_path.split('/')[3:]
+	folders ="/".join(folders)
+	
+	return folders	
+
+def update_filename(bucket, key, filename):    
+	s3 = boto3.resource('s3')
+
+	path = ('/').join(key.split('/')[:-1]) # Take key and remove last item 
+	
+	new_key = f'{path}/{filename}.csv'
+
+	s3.Object(bucket,new_key).copy_from(CopySource=f'{bucket}/{key}')
+	s3.Object(bucket,key).delete()
+	
+	return new_key

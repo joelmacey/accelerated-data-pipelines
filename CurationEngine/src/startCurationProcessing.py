@@ -9,19 +9,9 @@ import urllib
 from datetime import datetime
 
 import boto3
-from botocore.exceptions import ClientError
-
 
 class StartCurationProcessingException(Exception):
     pass
-
-
-sfn = boto3.client('stepfunctions')
-dynamodb = boto3.resource('dynamodb')
-curation_details_table = os.environ['CURATION_DETAILS_TABLE_NAME']
-curation_history_table = os.environ['CURATION_HISTORY_TABLE_NAME']
-state_machine_arn = os.environ['STEP_FUNCTION']
-
 
 def lambda_handler(event, context):
     '''
@@ -43,12 +33,10 @@ def lambda_handler(event, context):
         traceback.print_exc()
         raise StartCurationProcessingException(e)
 
-
 def start_curation_processing(event, context):
     '''
-    start_processing Confirm the lambda context request id is
-    not already being processed, check this is not just a folder being 
-    created, then start file processing.
+    start_curation_processing Passes the event and additional 
+    details defined to start off the curation engine.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -61,20 +49,21 @@ def start_curation_processing(event, context):
     
     return event
 
-
 def start_step_function_for_event(curationType):
     '''
-    start_step_function_for_file Starts the data lake staging engine
-    step function for this file.
-    :param bucket:  The S3 bucket name
-    :type bucket: Python String
-    :param key: The S3 object key
-    :type key: Python String
+    start_step_function_for_file Starts the accelerated 
+    data pipelines curation engine step function for this curationType.
+    :param curationType:  The unique Id of the curation defined in the curaiton details dynamodb table
+    :type curationType: Python String
     '''
     try:
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         keystring = re.sub('\W+', '_', curationType)  # Remove special chars
         step_function_name = timestamp + id_generator() + '_' + keystring
+
+        sfn = boto3.client('stepfunctions')
+        
+        state_machine_arn = os.environ['STEP_FUNCTION']
 
         step_function_name = step_function_name[:80]
 
@@ -95,19 +84,17 @@ def start_step_function_for_event(curationType):
             
         }
 
-        # Start step function
         step_function_input = json.dumps(sfn_Input)
         sfn.start_execution(
             stateMachineArn=state_machine_arn,
             name=step_function_name, input=step_function_input)
 
-        print('Started step function with input:{}'
-              .format(step_function_input))
+        print(f'Started step function with input:{step_function_input}')
+
     except Exception as e:
             record_failure_to_start_step_function(
                 curationType, e)
             raise
-
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     '''
@@ -122,12 +109,11 @@ def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     '''
     return ''.join(random.choice(chars) for _ in range(size))
 
-
 def record_failure_to_start_step_function(curationType, exception):
 
     '''
     record_failure_to_start_step_function Record failure to start the
-    staging engine step function in the data catalog. Any exceptions
+    curation engine step function in the curation history. Any exceptions
     raised by this method are caught.
     :param curationType:  The curation Type that is being ran
     :type curationType: Python String
@@ -135,6 +121,8 @@ def record_failure_to_start_step_function(curationType, exception):
     :type exception: Python Exception
     '''
     try:
+        dynamodb = boto3.resource('dynamodb')
+        
         curation_history_table = os.environ['CURATION_HISTORY_TABLE_NAME']
 
         dynamodb_item = {
@@ -149,6 +137,5 @@ def record_failure_to_start_step_function(curationType, exception):
 
         dynamodb_table = dynamodb.Table(curation_history_table)
         dynamodb_table.put_item(Item=dynamodb_item)
-
     except Exception:
         traceback.print_exc()

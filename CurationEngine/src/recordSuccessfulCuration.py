@@ -1,17 +1,11 @@
-# Record a failed curation in history table
 import time
 import traceback
 import os
-import boto3
 
+import boto3
 
 class RecordSuccessfulCurationException(Exception):
     pass
-
-
-sns_client = boto3.client('sns')
-dynamodb = boto3.resource('dynamodb')
-
 
 def lambda_handler(event, context):
     '''
@@ -33,7 +27,6 @@ def lambda_handler(event, context):
         traceback.print_exc()
         raise RecordSuccessfulCurationException(e)
 
-
 def record_successfull_curation(event, context):
     """
     record_successfull_curation Records the successful curation in the
@@ -47,18 +40,21 @@ def record_successfull_curation(event, context):
     """
     record_successful_curation_in_curation_history(event, context)
     send_successful_curation_sns(event, context)
+    
     return event
-
 
 def record_successful_curation_in_curation_history(event, context):
     '''
     record_successful_curation_in_curation_history Records the successful 
-    curation in the curation history table
+    curation in the curation history table.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
     :type context: LambdaContext
     '''
+
+    dynamodb = boto3.resource('dynamodb')
+
     try:
         curation_execution_name = event['curationDetails']['curationExecutionName']
         curationType = event['curationDetails']['curationType']
@@ -89,7 +85,6 @@ def record_successful_curation_in_curation_history(event, context):
         traceback.print_exc()
         raise RecordSuccessfulCurationException(e)
 
-
 def send_successful_curation_sns(event, context):
     '''
     send_successful_curation_sns Sends an SNS notifying subscribers
@@ -109,7 +104,6 @@ def send_successful_curation_sns(event, context):
         successSNSTopicARN = os.environ['SNS_SUCCESS_ARN']
         send_sns(successSNSTopicARN, subject, message)
 
-
 def send_sns(topic_arn, subject, message):
     '''
     send_sns Sends an SNS with the given subject and message to the
@@ -121,4 +115,6 @@ def send_sns(topic_arn, subject, message):
     :param message: The SNS notification message
     :type message: Python String
     '''
-    sns_client.publish(TopicArn=topic_arn, Subject=subject, Message=message)
+    client = boto3.client('sns')
+
+    client.publish(TopicArn=topic_arn, Subject=subject, Message=message)

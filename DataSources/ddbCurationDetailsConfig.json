@@ -8,7 +8,7 @@
  },
  "outputDetails": {
     "deleteMetadataFile": true,
-    "outputBucket": "",
+    "outputBucket": "wildrydes-dev-curated",
     "filename": "wildrydes",
     "includeTimestampInFilename": true,
     "outputFolderPath": "wildrydes/",

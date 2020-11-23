@@ -1,6 +1,20 @@
-## Accelerated Data Pipelines
+# Accelerated Data Pipelines
 
 A packaged solution, that builds a highly functional Data Pipeline Framework ready to use with your Data Lake, with the option to push data to your data catalog queryable via Elasticsearch.
+
+## Purpose
+
+The purpose of this package is to extend the [accelerated data lake](https://github.com/aws-samples/accelerated-data-lake) solution to add the functionality to run queries via Amazon Athena on your Glue tables on a scheduled basis.
+The platform also keeps an audit trail of when and what curation has ran for debugging purposes
+The pipeline allows the user to define everything about the output of the curation from the metadata and tags to be attached to the filename and S3 bucket for it to be placed within.
+
+## What is created:
+* Code commit repository used for storing sql scripts
+* 2 DynamoDB tables used to store details about the curation and to store the history of the curation (success and failure and the details used)
+* 1 Step Function used to manage and coordinate the pipelines
+* 8 Lambda Functions used with the step function to coordinate the running of the query
+* 1 Lambda Function to stream new entries to event bridge to create the trigger
+* 1 Lambda Function to stream successful and failed events to the elasticsearch cluster
 
 ## License
 
@@ -11,10 +25,11 @@ These are the steps required to provision the Data pipeline Solution and watch t
 * Provision the Required Storage Structure (5 minutes)
 * Provision the Curation Engine (5 minutes)
 * Provision the Stream Schedules (5 minutes)
-* Provision the Visualisation
-    * Provision Visualisation Lambdas (5 minutes)
-    * Initialise and use Elasticsearch / Kibana (5 minutes)
+* Provision Visualisation Lambdas (5 minutes)
 * Configure a sample curation entry and sample sql (5 minutes)
+    * Upload curation script to CodeCommit (5 minutes)
+    * Creating Curation Type in CurationDetails DynamoDB Table (5 minutes)
+    * Initialise and use Elasticsearch / Kibana (5 minutes)
 
 ## 1. Provisioning the Storage Structure
 * Go to the CloudFormation section of the AWS Console.
@@ -66,5 +81,79 @@ sam package --template-file ./scheduleSetup.yml --output-template-file scheduleS
 sam deploy --template-file scheduleSetupDeploy.yml --stack-name wildrydes-dev-schedule-streams --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=wildrydes-dev-
 ````
 
+## 4. Provisioning the Visualisation Lambdas
+This step creates a lambda which is triggered by changes to the curation details DynamoDB table. The lambda takes the changes and sends them to the elasticsearch cluster created in the accelerated data lake.
+
+Execution steps:
+(ignore these steps if already done in the visualisation step)
+* Create a IAM user, with CLI access.
+* Configure the AWS CLI with the user's access key and secret access key.
+* Install AWS SAM.
+(mandatory steps)
+* Open a terminal / command line and move to the StreamSchedules/ folder
+* Execute the AWS SAM package and deploy commands:
+
+For this example, the commands should be:
+````
+sam package --template-file ./visualisation.yml --output-template-file visualisationDeploy.yml --s3-bucket wildrydes-dev-visualisationcodepackages
+
+sam deploy --template-file visualisationDeploy.yml --stack-name wildrydes-dev-elasticsearch-lambdas --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=wildrydes-dev-
+````
+
+Congratulations! The Accelerated Data Pipeline is now fully provisioned! Now let's configure a curation detail and some sample query.
+
+## 5. Creating a sample curation
+---
+
+**NOTE**
+# These next steps assume you have a glue database (wildrydes) and table (rydebookings) created from the accelerated data lake example, feel free to update these values with your own database and table in the `DataSources/rydebooking-curation.sql` and `ddbCurationDetailsConfig.json` files.
+
+---
+
+### 5.1 Configure a curation script
+Execution steps:
+* Open the file `DataSources/rydebooking-curation.sql`
+* Copy the file's contents to the clipboard.
+* Go into the AWS Console, CodeCommit.
+* Open the CodeCommit repository, which for the environment prefix used in this demonstration will be: `wildrydes-dev-curation-scripts`
+* Click `Add File` then `Create File`
+* Paste in the contents of the `DataSources/rydebooking-curation.sql` file into the top text box
+* Name the file `wildrydes/rydebooking-curation.sql`
+* Fill in your name 
+* Fill in your email address
+* Click `Commit Changes`
+
+You have now uploaded your curation script to the code commit repository
+
+### 5.2 Configure the sample data source
+Execution steps:
+* Open the file `DataSources/ddbCurationDetailsConfig.json`
+* Copy the file's contents to the clipboard.
+* Go into the AWS Console, DynamoDB screen.
+* Open the DataSource table, which for the environment prefix used in this demonstration will be: `wildrydes-dev-curationDetails`
+* Go to the Items tab, click Create Item, switch to 'Text' view and paste in the contents of the `ddbCurationDetailsConfig.json` file. 
+* Save the item.
+
+You now have a fully configured your curationType.
+
+### 5.3 Initialise and use Elasticsearch / Kibana
+The above steps will have resulted in the rydebookings curation being entered into the DynamoDB curation history table (`wildrydes-dev-curationHistory`). The visualisation steps subscribed to these table's stream and all updates are now sent to elasticsearch.
+
+The data will already be in elasticsearch, we just need to create a suitable index.
+
+Execution steps:
+
+* Go to the kibana url (found in the AWS Console, under elasticsearch)
+* You will see there is no data - this is because the index needs to be created (the data is present, so we will let kibana auto-create it)
+* Click on the management tab, on the left.
+* Click "Index Patterns"
+* Paste in: `wildrydes-dev-curationHistory` (so <ENVIRONMENT_PREFIX>curationHistory). You will see this name in the available index patterns at the base of the screen.
+* Click "Next step"
+* Select `@Timestamp` in the "Time Filter field name" field - this is very important, otherwise you will not get the excellent kibana timeline.
+* Click "Create Index Pattern" and the index will be created. Click on the Discover tab to see your data catalog and details of your failed and successful ingress.
+
 # Architecture
 ![Architecture Diagram](Resources/Architecture.png)
+
+# Additional Resources
+* https://github.com/aws-samples/accelerated-data-lake

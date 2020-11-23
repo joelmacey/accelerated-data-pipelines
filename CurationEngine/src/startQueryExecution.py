@@ -1,11 +1,9 @@
 import traceback
 
 import boto3
-import json
 
 class StartQueryExecutionException(Exception):
     pass
-
 
 def lambda_handler(event, context):
     '''
@@ -27,23 +25,10 @@ def lambda_handler(event, context):
         traceback.print_exc()
         raise StartQueryExecutionException(e)
 
-def start_athena_query(query_string, database, output_location):
-    athena = boto3.client('athena')
-
-    response = athena.start_query_execution(
-        QueryString=query_string,
-        QueryExecutionContext={
-            'Database': database
-        },
-        ResultConfiguration={
-            'OutputLocation': output_location
-        }
-    )
-    return response['QueryExecutionId']
 def start_query_execution(event, context):
     """
-    get_file_settings Retrieves the settings for the new file in the
-    data lake.
+    start_query_execution Retrieves the sql query from code commit and 
+    the details from the event to execute the query on athena.
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -56,13 +41,27 @@ def start_query_execution(event, context):
     curation_bucket = event['outputBucket']
     curation_path = event['outputFolderPath'] #test-curation/
     output_location = f's3://{curation_bucket}/{curation_path}' 
-    print(output_location)
     query_execution_id = start_athena_query(sql_query, event['glueDetails']['database'], output_location)
 
     event.update({'queryExecutionId': query_execution_id})
     
     return event
 
+def start_athena_query(query_string, database, output_location):
+    athena = boto3.client('athena')
+
+    response = athena.start_query_execution(
+        QueryString=query_string,
+        QueryExecutionContext={
+            'Database': database
+        },
+        ResultConfiguration={
+            'OutputLocation': output_location
+        }
+    )
+
+    return response['QueryExecutionId']
+    
 def get_code_commit_file(repo, filePath):
  
     client = boto3.client('codecommit')
@@ -71,4 +70,5 @@ def get_code_commit_file(repo, filePath):
         repositoryName=repo,
         filePath=filePath
     )
+    
     return response['fileContent'].decode('utf-8')

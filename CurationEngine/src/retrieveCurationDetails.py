@@ -2,12 +2,8 @@ import traceback
 
 import boto3
 
-
 class RetrieveCurationDetailsException(Exception):
     pass
-
-
-dynamodb = boto3.resource('dynamodb')
 
 def get_code_commit_file(repo, filePath):
  
@@ -18,7 +14,6 @@ def get_code_commit_file(repo, filePath):
         filePath=filePath
     )
     return response
-
 
 def lambda_handler(event, context):
     '''
@@ -40,11 +35,10 @@ def lambda_handler(event, context):
         traceback.print_exc()
         raise RetrieveCurationDetailsException(e)
 
-
 def get_curation_details(event, context):
     """
-    get_file_settings Retrieves the settings for the new file in the
-    data lake.
+    get_file_settings Retrieves the curation details from the 
+    curation details dynamodb table and attaches them to the event
     :param event: AWS Lambda uses this to pass in event data.
     :type event: Python type - Dict / list / int / string / float / None
     :param context: AWS Lambda uses this to pass in runtime information.
@@ -55,7 +49,6 @@ def get_curation_details(event, context):
     attach_file_settings_to_event(event, context)
     return event
 
-
 def attach_file_settings_to_event(event, context):
     '''
     attach_file_settings_to_event Attach the configured file settings
@@ -65,6 +58,9 @@ def attach_file_settings_to_event(event, context):
     :param context: AWS Lambda uses this to pass in runtime information.
     :type context: LambdaContext
     '''
+    
+    dynamodb = boto3.resource('dynamodb')
+
     table = event["settings"]["curationDetailsTableName"]
     ddb_table = dynamodb.Table(table)
     # Get the item. There can only be one or zero - it is the table's
