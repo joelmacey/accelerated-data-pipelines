@@ -2,14 +2,35 @@
 
 A packaged solution, that builds a highly functional Data Pipeline Framework ready to use with your Data Lake, with the option to push data to your data catalog queryable via Elasticsearch.
 
+## Why the accelerated data pipelines was created
+
+From talking with customers who use the accelerated data lake as the foundation for their data lake, once they are able to query the data within their staged data via Athena their eyes light up with the possibilities of extracting, joining and reporting using the data now available to them. 
+
+Organisations, now with a wealth of data at their fingertips are able to start creating tangible benefit through the use of this data.
+These organisations look for a way to automate the filtering, joining and selecting using their newly acquired data lake. These automations are usually made up of a basic lambda function configured for a specific use case that didn't allow much flexibility or reusability, and the infrastucture to support was held together with duct-tape.
+
+Thus the accelerated data pipelines was created, with the ability to define a curation, the metadata and tags attached to the output file, renaming the output with a custom filename, automatically configuring the event schedule for when it should run, the ability to audit and see history of queries all while using the familiar tools and framework of the Accelerated Data Lake.
+
 ## Purpose
 
-The purpose of this package is to extend the [accelerated data lake](https://github.com/aws-samples/accelerated-data-lake) solution to add the functionality to run queries via Amazon Athena on your Glue tables on a scheduled basis.
+The purpose of this package is to extend the [accelerated data lake](https://github.com/aws-samples/accelerated-data-lake) solution to add the functionality to run queies via Amazon Athena on your Glue tables on a scheduled basis.
 The platform also keeps an audit trail of when and what curation has ran for debugging purposes
 The pipeline allows the user to define everything about the output of the curation from the metadata and tags to be attached to the filename and S3 bucket for it to be placed within.
 
+## Benefits
+* Run athena queries on a scheduled basis to a defined output location
+* Integrates seamlessly with your existing Glue catalog
+* Automatically creates scheduled events in EventBridge
+* Record successful and failed curations in the Curation History DynamoDB table
+* Track history of sql script changes using CodeCommit
+* Error Notification via SNS
+* Supports long running queries (>15 minutes)
+* Add custom metadata and tags to the output file
+* Ability to rename the output file
+* Stream events to existing Kibana Dashboard
+
 ## What is created:
-* Code commit repository used for storing sql scripts
+* 1 CodeCommit repository used for storing sql scripts
 * 2 DynamoDB tables used to store details about the curation and to store the history of the curation (success and failure and the details used)
 * 1 Step Function used to manage and coordinate the pipelines
 * 8 Lambda Functions used with the step function to coordinate the running of the query
@@ -106,7 +127,7 @@ Congratulations! The Accelerated Data Pipeline is now fully provisioned! Now let
 ---
 
 **NOTE**
-# These next steps assume you have a glue database (wildrydes) and table (rydebookings) created from the accelerated data lake example, feel free to update these values with your own database and table in the `DataSources/rydebooking-curation.sql` and `ddbCurationDetailsConfig.json` files.
+These next steps assume you have a glue database (wildrydes) and table (rydebookings) created from the accelerated data lake example, feel free to update these values with your own database and table in the `DataSources/rydebooking-curation.sql` and `ddbCurationDetailsConfig.json` files.
 
 ---
 
