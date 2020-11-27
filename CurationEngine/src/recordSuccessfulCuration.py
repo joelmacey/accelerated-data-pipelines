@@ -61,7 +61,7 @@ def record_successful_curation_in_curation_history(event, context):
         queryOutputLocation = event['queryOutputLocation']
         queryExecutionId = event['queryExecutionId']
         scriptFileCommitId = event['scriptFileCommitId']
-        curationBucket = event['settings']['curationBucket']
+        outputBucket = event['outputBucket']
         curation_history_table = event["settings"]["curationHistoryTableName"]
 
         tags = event['requiredTags']
@@ -73,7 +73,7 @@ def record_successful_curation_in_curation_history(event, context):
             'athenaQueryExecutionId': queryExecutionId,
             'curationKey': queryOutputLocation,
             'scriptFileCommitId': scriptFileCommitId,
-            'curationBucket': curationBucket,
+            'uoutputBucket': outputBucket,
             'curationExecutionName': curation_execution_name,
             'tags': tags,
             'metadata': metadata

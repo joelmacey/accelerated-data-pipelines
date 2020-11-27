@@ -7,7 +7,7 @@ Parameters:
     Description: Enter an environment prefix for the S3 Buckets and DynamoDB tables ([a-z][a-z0-9]+)
     MinLength: 3
     MaxLength: 19
-    AllowedPattern: "[a-z][a-z0-9]+"
+    AllowedPattern: "[a-z][a-z0-9-]+"
 
   KMSKeyARN:
     Type: String
@@ -103,7 +103,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName:
-        !Sub "${EnvironmentPrefix}-accelerated-data-pipelines-codepackages"
+        !Sub "${EnvironmentPrefix}accelerated-data-pipelines-codepackages"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         IgnorePublicAcls: true
@@ -118,7 +118,7 @@ Resources:
   CodeCommitScriptsRepo:
     Type: AWS::CodeCommit::Repository
     Properties:
-      RepositoryName: !Sub "${EnvironmentPrefix}-${CodeCommitScriptsName}"
+      RepositoryName: !Sub "${EnvironmentPrefix}${CodeCommitScriptsName}"
       RepositoryDescription: This is a repository to store the sql scripts used for curation
       
 Outputs:
@@ -126,34 +126,34 @@ Outputs:
     Description: The name of the Curation Details DDBTable
     Value: !Ref CurationDetailsTable
     Export:
-      Name: !Sub "${EnvironmentPrefix}-CurationDetailsTableName"  
+      Name: !Sub "${EnvironmentPrefix}CurationDetailsTableName"  
   CurationDetailsTableArn:
     Description: The ARN of the Curation Details DDBTable
     Value: !GetAtt CurationDetailsTable.Arn
     Export:
-      Name: !Sub "${EnvironmentPrefix}-CurationDetailsTableARN"   
+      Name: !Sub "${EnvironmentPrefix}CurationDetailsTableARN"   
   CurationDetailsStreamArn:
     Description: The ARN of the Curation Details Stream
     Value: !GetAtt CurationDetailsTable.StreamArn
     Export:
-      Name: !Sub "${EnvironmentPrefix}-CurationDetailsStreamARN"   
+      Name: !Sub "${EnvironmentPrefix}CurationDetailsStreamARN"   
   CurationHistoryTableName:
     Description: The name of the Curation History DDBTable
     Value: !Ref CurationHistoryTable
     Export:
-      Name: !Sub "${EnvironmentPrefix}-CurationHistoryTableName"          
+      Name: !Sub "${EnvironmentPrefix}CurationHistoryTableName"          
   CurationHistoryStreamArn:
     Description: The ARN of the Curation History Stream
     Value: !GetAtt CurationHistoryTable.StreamArn
     Export:
-      Name: !Sub "${EnvironmentPrefix}-CurationHistoryStreamARN" 
+      Name: !Sub "${EnvironmentPrefix}CurationHistoryStreamARN" 
   CodeCommitScriptsName:
     Description: The name of the codecommit repo created for scripts
     Value: !GetAtt CodeCommitScriptsRepo.Name
     Export: 
-      Name: !Sub "${EnvironmentPrefix}-CodeCommitScriptsRepo-Name"
+      Name: !Sub "${EnvironmentPrefix}CodeCommitScriptsRepo-Name"
   CodeCommitScriptsCloneUrlHttp:
     Description: The cloneurl for the codecommit scripts repo
     Value: !GetAtt CodeCommitScriptsRepo.CloneUrlHttp
     Export: 
-      Name: !Sub "${EnvironmentPrefix}-CodeCommitScriptsRepo-CloneUrlHttp"
+      Name: !Sub "${EnvironmentPrefix}CodeCommitScriptsRepo-CloneUrlHttp"

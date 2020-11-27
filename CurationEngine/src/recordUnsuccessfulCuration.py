@@ -59,7 +59,7 @@ def record_unsuccessful_curation_in_curation_history(event, context):
         curation_execution_name = event['curationDetails']['curationExecutionName']
         error = event['error-info']['Error']
         error_cause = json.loads(event['error-info']['Cause'])
-        curationBucket = event['settings']['curationBucket']
+        outputBucket = event['outputBucket']
         curation_history_table = event["settings"]["curationHistoryTableName"]
         
         if 'stackTrace' in error_cause:
@@ -69,7 +69,7 @@ def record_unsuccessful_curation_in_curation_history(event, context):
             'curationType': curationType,
             'curationExecutionName': curation_execution_name,
             'timestamp': int(time.time() * 1000),
-            'curationBucket': curationBucket,
+            'outputBucket': outputBucket,
             'error': error,
             'errorCause': error_cause
         }

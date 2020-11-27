@@ -42,7 +42,9 @@ def validate_details(event, context):
     does_database_exist(event['glueDetails']['database'])
 
     does_table_exist(event['glueDetails']['database'], event['glueDetails']['table'])
-
+    
+    does_output_bucket_exist(event['outputBucket'])
+    
     return event
 
 def get_code_commit_file(repo, filePath):
@@ -69,3 +71,8 @@ def does_table_exist(database, table):
         DatabaseName=database,
         Name=table
     )
+
+def does_output_bucket_exist(bucket):
+    s3 = boto3.resource('s3')
+
+    s3.Bucket(bucket) in s3.buckets.all()
