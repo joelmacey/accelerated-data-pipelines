@@ -1,6 +1,7 @@
 import traceback
 import os
 import json
+import logging
 
 import boto3
 import botocore
@@ -12,11 +13,11 @@ class CreateNewEventRuleException(Exception):
 # Subclass of boto's TypeDeserializer for DynamoDB to adjust
 # for DynamoDB Stream format.
 class StreamTypeDeserializer(TypeDeserializer):
-    def _deserialize_n(self, value):
-        return float(value)
+	def _deserialize_n(self, value):
+		return float(value)
 
-    def _deserialize_b(self, value):
-        return value  # Already in Base64
+	def _deserialize_b(self, value):
+		return value  # Already in Base64
 
 def lambda_handler(event, context):
 	'''
@@ -56,12 +57,17 @@ def create_new_event_rule(event, context):
 		ddb = record['dynamodb']
 		# Get the event type and curation type for the record
 		event_name = record['eventName'].upper()  # INSERT, MODIFY, REMOVE
-		doc_fields = ddb_deserializer.deserialize({'M': ddb['NewImage']})
-		curation_type = doc_fields['curationType']
-		
-		print(f'Creating or modifying event for curationType {curation_type}')
-		
 		if (event_name == 'INSERT') or (event_name == 'MODIFY'):
+			if 'NewImage' not in ddb:
+				logger.warning(
+					'Cannot process stream if it does not contain NewImage')
+				continue
+			
+			doc_fields = ddb_deserializer.deserialize({'M': ddb['NewImage']})
+			curation_type = doc_fields['curationType']
+			print(f'Creating or modifying event for curationType {curation_type}')
+			
+	
 			put_rule(curation_type, doc_fields['cronExpression'])
 			put_target(curation_type, start_curation_process_function_arn)
 		
@@ -83,7 +89,7 @@ def delete_rule(curation_type):
 	client = boto3.client('events')
 
 	response = client.delete_rule(
-    	Name=f'{curation_type}-event-rule',
+		Name=f'{curation_type}-event-rule',
 	)
 
 def put_target(curation_type, function_arn):
@@ -93,12 +99,12 @@ def put_target(curation_type, function_arn):
 	input = {"curationType": curation_type}
 
 	response = client.put_targets(
-	    Rule=f'{curation_type}-event-rule',
-	    Targets=[
-	        {
-	            'Id': f'{curation_type}-event-target',
-	            'Arn': function_arn,
-	            'Input': json.dumps(input)
-	        }
-	    ]
+		Rule=f'{curation_type}-event-rule',
+		Targets=[
+			{
+				'Id': f'{curation_type}-event-target',
+				'Arn': function_arn,
+				'Input': json.dumps(input)
+			}
+		]
 	)

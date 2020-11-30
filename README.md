@@ -24,7 +24,7 @@ The pipeline allows the user to define everything about the output of the curati
 * Record successful and failed curations in the Curation History DynamoDB table
 * Track history of sql script changes using CodeCommit
 * Error Notification via SNS
-* Supports long running queries (>15 minutes)
+* Supports long running queries (>15 minutes aka the lambda timeout)
 * Add custom metadata and tags to the output file
 * Ability to rename the output file
 * Stream events to existing Kibana Dashboard
@@ -45,7 +45,6 @@ This library is licensed under the Apache 2.0 License.
 These are the steps required to provision the Data pipeline Solution and watch the ingress of data.
 * Provision the Required Storage Structure (5 minutes)
 * Provision the Curation Engine (5 minutes)
-* Provision the Stream Schedules (5 minutes)
 * Provision Visualisation Lambdas (5 minutes)
 * Configure a sample curation entry and sample sql (5 minutes)
     * Upload curation script to CodeCommit (5 minutes)
@@ -81,25 +80,6 @@ For this example, the commands should be:
 sam package --template-file ./curationEngine.yml --output-template-file curationEngineDeploy.yml --s3-bucket wildrydes-dev-accelerated-data-pipelines-codepackages
 
 sam deploy --template-file curationEngineDeploy.yml --stack-name wildrydes-dev-curation-engine --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=wildrydes-dev-
-````
-
-## 3. Provisioning the Schedule Stream
-This is the schedule stream, any creation or alteration of an entry in the curationDetails dynamodb table will be streamed to a lambda function that add or updates the event rule used in the curation engine using the cron expression defined in the entry.
-
-Execution steps:
-(ignore these steps if already done in the visualisation step)
-* Create a IAM user, with CLI access.
-* Configure the AWS CLI with the user's access key and secret access key.
-* Install AWS SAM.
-(mandatory steps)
-* Open a terminal / command line and move to the StreamSchedules/ folder
-* Execute the AWS SAM package and deploy commands:
-
-For this example, the commands should be:
-````
-sam package --template-file ./scheduleSetup.yml --output-template-file scheduleSetupDeploy.yml --s3-bucket wildrydes-dev-accelerated-data-pipelines-codepackages
-
-sam deploy --template-file scheduleSetupDeploy.yml --stack-name wildrydes-dev-schedule-streams --capabilities CAPABILITY_NAMED_IAM --parameter-overrides EnvironmentPrefix=wildrydes-dev-
 ````
 
 ## 4. Provisioning the Visualisation Lambdas
