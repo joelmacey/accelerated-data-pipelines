@@ -38,24 +38,27 @@ def update_output_details(event, context):
 	"""
 	queryOutputKey = get_existing_path(event['queryOutputLocation'])
 	queryOutputBucket = get_bucket(event['queryOutputLocation'])
-		
+
+	# Delete the metadata file that is created	
 	if event['deleteMetadataFileBool'] == True:
 		delete_object(f'{queryOutputKey}.metadata', queryOutputBucket)
+	
+	new_key = queryOutputKey
 	
 	if event['outputFilename'] != None:
 		filename = event['outputFilename']
 		if event['includeTimestampInFilenameBool'] == True:
 			timestamp = event['curationDetails']['curationTimestamp']
-			filename = f'{filename}-{timestamp}'
-		queryOutputKey = update_filename(queryOutputBucket, queryOutputKey, filename)
+			filename = f'{filename}{timestamp}'
+		new_key = update_filename(queryOutputBucket, queryOutputKey, filename)
 	
 	event.update({"queryOutputKey": queryOutputKey})
 	
 	metadata = event['requiredMetadata']
 
 	# Copy the file into location in order to apply metadata
-	update_metadata_on_object(queryOutputBucket, queryOutputKey ,metadata)
-
+	update_metadata_on_object(queryOutputBucket, queryOutputKey, new_key, metadata)
+	delete_object(queryOutputKey, queryOutputBucket)
 	# Generate the tag list.
 	tagList = []
 	for tagKey in event['requiredTags']:
@@ -63,11 +66,11 @@ def update_output_details(event, context):
 		tagList.append(tag)
 
 	# Apply the tag list.
-	put_tags_on_object(queryOutputBucket, queryOutputKey, tagList)
+	put_tags_on_object(queryOutputBucket, new_key, tagList)
 
 	return event
 
-def update_metadata_on_object(bucket, key ,metadata):
+def update_metadata_on_object(bucket, key, new_key, metadata):
 	client = boto3.client('s3')
 	
 	copy_source = {'Bucket': bucket, 'Key': key}
@@ -75,7 +78,7 @@ def update_metadata_on_object(bucket, key ,metadata):
 	client.copy(
 		copy_source,
 		bucket,
-		key,
+		new_key,
 		ExtraArgs={"Metadata": metadata, "MetadataDirective": "REPLACE"})
 
 def put_tags_on_object(bucket, key, tagList):
@@ -111,8 +114,5 @@ def update_filename(bucket, key, filename):
 	path = ('/').join(key.split('/')[:-1]) # Take key and remove last item 
 	
 	new_key = f'{path}/{filename}.csv'
-
-	s3.Object(bucket,new_key).copy_from(CopySource=f'{bucket}/{key}')
-	s3.Object(bucket,key).delete()
 	
 	return new_key

@@ -73,7 +73,7 @@ def record_successful_curation_in_curation_history(event, context):
             'athenaQueryExecutionId': queryExecutionId,
             'curationKey': queryOutputLocation,
             'scriptFileCommitId': scriptFileCommitId,
-            'uoutputBucket': outputBucket,
+            'outputBucket': outputBucket,
             'curationExecutionName': curation_execution_name,
             'tags': tags,
             'metadata': metadata

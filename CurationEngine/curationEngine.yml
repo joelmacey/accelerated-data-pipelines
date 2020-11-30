@@ -11,7 +11,14 @@ Parameters:
     Type: String
     Default: curation-success
     Description: The SNS topic name to receive successful notifications
-
+  WaitPeriod:
+    Default: 15
+    Type: Number
+    Description: The time to wait before polling the query execution status, in seconds
+  QueryTimeout:
+    Default: 30
+    Type: Number
+    Description: The time athena should wait before failing, in minutes
   EnvironmentPrefix:
     Type: String
     Description: Enter the environment prefix used for the Accelerated Data Pipeline, used to reference storage structure
@@ -145,6 +152,7 @@ Resources:
                   - athena:GetQueryResults
                   - athena:ListQueryExecutions
                   - athena:StartQueryExecution
+                  - athena:StopQueryExecution
                 Resource: "*"
         - PolicyName: CodeCommit
           PolicyDocument:
@@ -301,7 +309,9 @@ Resources:
       MemorySize: 128
       Timeout: 300
       Role: !GetAtt [ LambdaExecutionRole, Arn ]
-
+      Environment:
+        Variables:
+          QUERY_TIMEOUT: !Ref QueryTimeout
   UpdateOutputDetails:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -474,7 +484,7 @@ Resources:
 
               "Wait": {
                 "Type": "Wait",
-                "Seconds": 15,
+                "Seconds": ${WaitPeriod},
                 "Next": "GetQueryExecutionStatus"
               },
               
@@ -653,11 +663,5 @@ Resources:
           UpdateOutputDetailsArn: !GetAtt [UpdateOutputDetails, Arn]
           RecordSuccessfulCurationArn: !GetAtt [RecordSuccessfulCuration, Arn]
           RecordUnsuccessfulCurationArn: !GetAtt [RecordUnsuccessfulCuration, Arn]
+          WaitPeriod: !Ref WaitPeriod
       RoleArn: !GetAtt [ StatesExecutionRole, Arn ]
-
-Outputs:
-  StartCurationProcessArn:
-    Description: The ARN of the Start Curation Process Function # This is used by the StreamSchedules 
-    Value: !GetAtt [StartCurationProcessing, Arn]
-    Export:
-      Name: !Sub "${EnvironmentPrefix}StartCurationProcessFunctionArn"  
