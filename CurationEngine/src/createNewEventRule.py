@@ -67,6 +67,7 @@ def create_new_event_rule(event, context):
 			
 			doc_fields = ddb_deserializer.deserialize({'M': ddb['NewImage']})
 			curation_type = doc_fields['curationType']
+			
 			print(f'Creating or modifying event for curationType {curation_type}')
 			
 			put_rule(curation_type, doc_fields['cronExpression'])
@@ -77,6 +78,7 @@ def create_new_event_rule(event, context):
 			curation_type = doc_fields['curationType']
 			
 			print(f'Removing event for curationType {curation_type}')
+			
 			remove_targets(curation_type)
 			delete_rule(curation_type)
 
