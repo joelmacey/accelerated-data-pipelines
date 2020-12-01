@@ -39,7 +39,11 @@ def start_query_execution(event, context):
     sql_query = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
     
     curation_bucket = event['outputBucket']
-    curation_path = event['outputFolderPath'] #test-curation/
+    curation_path = event['outputFolderPath']
+    if event['athenaOutputBucket'] != None:
+        curation_bucket = event['athenaOutputBucket']
+    if event['athenaOutputFolderPath'] != None:
+        curation_path = event['athenaOutputFolderPath']    
     output_location = f's3://{curation_bucket}/{curation_path}' 
     query_execution_id = start_athena_query(sql_query, event['glueDetails']['database'], output_location)
 

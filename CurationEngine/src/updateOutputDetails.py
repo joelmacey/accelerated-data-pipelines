@@ -42,23 +42,30 @@ def update_output_details(event, context):
 	# Delete the metadata file that is created	
 	if event['deleteMetadataFileBool'] == True:
 		delete_object(f'{queryOutputKey}.metadata', queryOutputBucket)
-	
-	new_key = queryOutputKey
-	
+
+	new_key = queryOutputKey # Defaults to the key
+	new_bucket = event['outputBucket']
+
 	if event['outputFilename'] != None:
 		filename = event['outputFilename']
 		if event['includeTimestampInFilenameBool'] == True:
 			timestamp = event['curationDetails']['curationTimestamp']
 			filename = f'{filename}{timestamp}'
-		new_key = update_filename(queryOutputBucket, queryOutputKey, filename)
-	
-	event.update({"queryOutputKey": queryOutputKey})
+		if event['outputFolderPath'] != None: # If there is a defined path, use this
+			path = ('/').join(event['outputFolderPath'].split('/'))
+		else:
+			path = ('/').join(new_key.split('/')[:-1]) # Otherwise use the one from the output key, splits the key, removes the filename and rejoins
+		new_key = f'{path}{filename}.csv'
 	
 	metadata = event['requiredMetadata']
 
-	# Copy the file into location in order to apply metadata
-	update_metadata_on_object(queryOutputBucket, queryOutputKey, new_key, metadata)
-	delete_object(queryOutputKey, queryOutputBucket)
+	# Copy the file into the new location and apply metadata
+	copy_and_update_metadata_on_object(queryOutputBucket, queryOutputKey, new_bucket, new_key, metadata)
+
+	# Only delete the file as long as its not the same file
+	if (queryOutputBucket != new_bucket and queryOutputKey != new_key):
+		delete_object(queryOutputKey, queryOutputBucket)
+	
 	# Generate the tag list.
 	tagList = []
 	for tagKey in event['requiredTags']:
@@ -66,18 +73,18 @@ def update_output_details(event, context):
 		tagList.append(tag)
 
 	# Apply the tag list.
-	put_tags_on_object(queryOutputBucket, new_key, tagList)
+	put_tags_on_object(new_bucket, new_key, tagList)
 
 	return event
 
-def update_metadata_on_object(bucket, key, new_key, metadata):
+def copy_and_update_metadata_on_object(bucket, key, new_bucket, new_key, metadata):
 	client = boto3.client('s3')
 	
 	copy_source = {'Bucket': bucket, 'Key': key}
 
 	client.copy(
 		copy_source,
-		bucket,
+		new_bucket,
 		new_key,
 		ExtraArgs={"Metadata": metadata, "MetadataDirective": "REPLACE"})
 
@@ -107,12 +114,3 @@ def get_existing_path(s3_path):
 	folders ="/".join(folders)
 	
 	return folders	
-
-def update_filename(bucket, key, filename):    
-	s3 = boto3.resource('s3')
-
-	path = ('/').join(key.split('/')[:-1]) # Take key and remove last item 
-	
-	new_key = f'{path}/{filename}.csv'
-	
-	return new_key

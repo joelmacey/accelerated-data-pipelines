@@ -70,25 +70,47 @@ def attach_file_settings_to_event(event, context):
     response = ddb_table.get_item(
         Key={'curationType': event['curationDetails']['curationType']}, ConsistentRead=True)
     item = response['Item']
-    output_filename = item['outputDetails']['filename'] \
+
+    athenaOutputBucket = item['outputDetails']['athenaOutputBucket'] \
+        if 'athenaOutputBucket' in item['outputDetails'] \
+        else None
+    athenaOutputFolderPath = item['outputDetails']['athenaOutputFolderPath'] \
+        if 'athenaOutputFolderPath' in item['outputDetails'] \
+        else None
+
+    outputFilename = item['outputDetails']['filename'] \
         if 'filename' in item['outputDetails'] \
         else None
+    
+    outputFolderPath = item['outputDetails']['outputFolderPath'] \
+        if 'outputFolderPath' in item['outputDetails'] \
+        else None
+
     if 'deleteMetadataFile' in item['outputDetails'] and item['outputDetails']['deleteMetadataFile'] == True:
         deleteMetadataFileBool = True    
     else:
         deleteMetadataFileBool = False
+
     if 'includeTimestampInFilename' in item['outputDetails'] and item['outputDetails']['includeTimestampInFilename'] == True:
         includeTimestampInFilenameBool = True    
     else:
         includeTimestampInFilenameBool = False
-        
+
+    if 'deleteAthenaQueryFile' in item['outputDetails'] and item['outputDetails']['deleteAthenaQueryFile'] == True:
+        deleteAthenaQueryFile = True   
+    else:
+        deleteAthenaQueryFile = False    
+    
     event.update({'scriptFilePath': item['sqlFilePath']})
     event.update({'glueDetails': item['glueDetails']})
-    event.update({'outputFilename': output_filename})
+    event.update({'outputFilename': outputFilename})
     event.update({'deleteMetadataFileBool': deleteMetadataFileBool})
+    event.update({'deleteAthenaQueryFile': deleteAthenaQueryFile})
+    event.update({'athenaOutputBucket': athenaOutputBucket})
+    event.update({'athenaOutputFolderPath': athenaOutputFolderPath})
     event.update({'includeTimestampInFilenameBool': includeTimestampInFilenameBool})
     event.update({'outputBucket': item['outputDetails']['outputBucket']})
-    event.update({'outputFolderPath': item['outputDetails']['outputFolderPath']})
+    event.update({'outputFolderPath': outputFolderPath})
     event.update({'requiredMetadata': item['outputDetails']['metadata']})
     event.update({'requiredTags': item['outputDetails']['tags']})
     

@@ -176,6 +176,7 @@ Resources:
                   - events:DescribeRule
                   - events:PutRule
                   - events:PutTargets
+                  - events:RemoveTargets
                 Resource: "*" 
 # SNS Topics
   CurationSuccessSNS:

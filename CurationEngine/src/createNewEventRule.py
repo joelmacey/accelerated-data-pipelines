@@ -7,6 +7,8 @@ import boto3
 import botocore
 from boto3.dynamodb.types import TypeDeserializer
 
+logger = logging.getLogger()
+
 class CreateNewEventRuleException(Exception):
 	pass
 
@@ -67,10 +69,17 @@ def create_new_event_rule(event, context):
 			curation_type = doc_fields['curationType']
 			print(f'Creating or modifying event for curationType {curation_type}')
 			
-	
 			put_rule(curation_type, doc_fields['cronExpression'])
 			put_target(curation_type, start_curation_process_function_arn)
 		
+		elif event_name == 'REMOVE':
+			doc_fields = ddb_deserializer.deserialize({'M': ddb['Keys']})
+			curation_type = doc_fields['curationType']
+			
+			print(f'Removing event for curationType {curation_type}')
+			remove_targets(curation_type)
+			delete_rule(curation_type)
+
 	return 'Success'
 
 def put_rule(curation_type, schedule_expression):
@@ -78,7 +87,7 @@ def put_rule(curation_type, schedule_expression):
 	client = boto3.client('events')
 
 	response = client.put_rule(
-		Name=f'{curation_type}-event-rule',
+		Name=f'{curation_type}-scheduled-curation',
 		ScheduleExpression=schedule_expression,
 		State='ENABLED',
 		Description=f'Event rule for curation type {curation_type}'
@@ -89,7 +98,7 @@ def delete_rule(curation_type):
 	client = boto3.client('events')
 
 	response = client.delete_rule(
-		Name=f'{curation_type}-event-rule',
+		Name=f'{curation_type}-scheduled-curation'
 	)
 
 def put_target(curation_type, function_arn):
@@ -99,7 +108,7 @@ def put_target(curation_type, function_arn):
 	input = {"curationType": curation_type}
 
 	response = client.put_targets(
-		Rule=f'{curation_type}-event-rule',
+		Rule=f'{curation_type}-scheduled-curation',
 		Targets=[
 			{
 				'Id': f'{curation_type}-event-target',
@@ -107,4 +116,15 @@ def put_target(curation_type, function_arn):
 				'Input': json.dumps(input)
 			}
 		]
+	)
+
+def remove_targets(curation_type):
+	
+	client = boto3.client('events')
+
+	response = client.remove_targets(
+	    Rule=f'{curation_type}-scheduled-curation',
+	    Ids=[
+	        f'{curation_type}-event-target',
+	    ]
 	)
