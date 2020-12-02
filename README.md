@@ -3,7 +3,7 @@
 The Accelerated Data Pipelines (ADP) solution takes the next step in your data journey...data dev-ops. Enabling organisations to quickly configure and automate SQL queries to run against their data available within their AWS Glue catalog.
 
 ![High Level Architecture](Resources/High_Level.png)
-
+![High Level Architecture Explanation](Resources/High_Level_Explanation.png)
 ## Why the accelerated data pipelines was created
 
 From talking with customers who use the accelerated data lake as the foundation for their data lake, once they are able to query the data within their staged data via Athena their eyes light up with the possibilities of extracting, joining and reporting using the data now available to them. 
