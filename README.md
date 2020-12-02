@@ -1,6 +1,8 @@
 # Accelerated Data Pipelines
 
-A packaged solution, that builds a highly functional Data Pipeline Framework ready to use with your Data Lake, with the option to push data to your data catalog queryable via Elasticsearch.
+The Accelerated Data Pipelines (ADP) solution takes the next step in your data journey...data dev-ops. Enabling organisations to quickly configure and automate SQL queries to run against their data available within their AWS Glue catalog.
+
+![High Level Architecture](Resources/High_Level.png)
 
 ## Why the accelerated data pipelines was created
 
