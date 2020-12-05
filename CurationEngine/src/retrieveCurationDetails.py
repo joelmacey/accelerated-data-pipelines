@@ -73,21 +73,23 @@ def attach_file_settings_to_event(event, context):
 
     # Retrieve all the details around Athena
     athenaDetails = {}
-    athenaDetails['athenaOutputBucket'] = item['athenaDetails']['athenaOutputBucket'] \
-        if 'athenaOutputBucket' in item['athenaDetails'] \
-        else None
-    athenaDetails['athenaOutputFolderPath'] = item['athenaDetails']['athenaOutputFolderPath'] \
-        if 'athenaOutputFolderPath' in item['athenaDetails'] \
-        else None
-    if 'deleteAthenaQueryFile' in item['athenaDetails'] and item['athenaDetails']['deleteAthenaQueryFile'] == True:
-        athenaDetails['deleteAthenaQueryFile'] = True   
-    else:
-        athenaDetails['deleteAthenaQueryFile'] = False 
-    
-    if 'deleteMetadataFile' in item['athenaDetails'] and item['athenaDetails']['deleteMetadataFile'] == True:
-        athenaDetails['deleteMetadataFileBool'] = True    
-    else:
-        athenaDetails['deleteMetadataFileBool'] = False   
+    if 'athenaDetails' in item:
+            
+        athenaDetails['athenaOutputBucket'] = item['athenaDetails']['athenaOutputBucket'] \
+            if 'athenaOutputBucket' in item['athenaDetails'] \
+            else None
+        athenaDetails['athenaOutputFolderPath'] = item['athenaDetails']['athenaOutputFolderPath'] \
+            if 'athenaOutputFolderPath' in item['athenaDetails'] \
+            else None
+        if 'deleteAthenaQueryFile' in item['athenaDetails'] and item['athenaDetails']['deleteAthenaQueryFile'] == True:
+            athenaDetails['deleteAthenaQueryFile'] = True   
+        else:
+            athenaDetails['deleteAthenaQueryFile'] = False 
+        
+        if 'deleteMetadataFile' in item['athenaDetails'] and item['athenaDetails']['deleteMetadataFile'] == True:
+            athenaDetails['deleteMetadataFileBool'] = True    
+        else:
+            athenaDetails['deleteMetadataFileBool'] = False   
     
     # Retrieve all the details around the output of the file
     outputDetails = {}
