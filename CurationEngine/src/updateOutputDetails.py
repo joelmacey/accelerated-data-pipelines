@@ -48,31 +48,33 @@ def update_output_details(event, context):
 
 	if event['outputDetails']['outputFilename'] != None:
 		filename = event['outputDetails']['outputFilename']
+		new_key = f'{filename}.csv'
 		if event['outputDetails']['includeTimestampInFilenameBool'] == True:
 			timestamp = event['curationDetails']['curationTimestamp']
 			filename = f'{filename}{timestamp}'
 		if event['outputDetails']['outputFolderPath'] != None: # If there is a defined path, use this
 			path = ('/').join(event['outputDetails']['outputFolderPath'].split('/'))
+			new_key = f'{path}{filename}.csv'
+		elif event['outputDetails']['outputFolderPath'] == None:
+			new_key = f'{filename}.csv'
 		else:
 			path = ('/').join(new_key.split('/')[:-1]) # Otherwise use the one from the output key, splits the key, removes the filename and rejoins
-		new_key = f'{path}{filename}.csv'
-	
+			new_key = f'{path}{filename}.csv'
 	curationDetails = event['curationDetails']
 	curationDetails['curationLocation'] = f's3://{new_bucket}/{new_key}'
 	
 	event.update({'curationDetails': curationDetails})
 	
 	metadata = event['outputDetails']['metadata']
-	
 	if metadata != None:
 		# Copy the file into the new location and apply metadata
 		copy_and_update_metadata_on_object(queryOutputBucket, queryOutputKey, new_bucket, new_key, metadata)
-	elif (queryOutputBucket != new_bucket and queryOutputKey != new_key):
+	elif (queryOutputKey != new_key):
 		# Don't copy with metadata, just update with new filename
 		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
 
 	# Only delete the file as long as its not the same file
-	if (queryOutputBucket != new_bucket and queryOutputKey != new_key):
+	if (queryOutputKey != new_key):
 		delete_object(queryOutputKey, queryOutputBucket)
 	
 	# Generate the tag list.

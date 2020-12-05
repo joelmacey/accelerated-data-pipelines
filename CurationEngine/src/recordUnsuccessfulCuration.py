@@ -80,7 +80,11 @@ def record_unsuccessful_curation_in_curation_history(event, context):
             dynamodb_item['athenaQueryExecutionId'] = event['queryDetails']['queryExecutionId']
         if 'curationLocation' in event['curationDetails']:
             dynamodb_item['curationOutputLocation'] = event['curationDetails']['curationLocation']
-        
+        if 'outputDetails' in event:
+            dynamodb_item['outputDetails'] = event['outputDetails']
+        if 'glueDetails' in event:
+            dynamodb_item['glueDetails'] = event['glueDetails']
+
         dynamodb_table = dynamodb.Table(curation_history_table)
         dynamodb_table.put_item(Item=dynamodb_item)
 

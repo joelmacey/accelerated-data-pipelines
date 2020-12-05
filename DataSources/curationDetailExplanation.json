@@ -11,8 +11,8 @@
     "athenaDetails": {
       "athenaOutputBucket": "If you would like the file to be placed in a bucket before it is moved to a final location, specify it here (optional)",
       "athenaOutputFolderPath": "specify the folder path that you would like the athena query to use (optional)",
-      "deleteAthenaQueryFile": "If you would like the curaiton engine to remove the inital query result after it has been moved to the final location(optional)",
-      "deleteMetadataFile": "If you would like the engine to delete the .metadata file that is created along with the query (optional)"
+      "deleteAthenaQueryFile": "If you would like the curaiton engine to remove the inital query result after it has been moved to the final location, default is True (optional)",
+      "deleteMetadataFile": "If you would like the engine to delete the .metadata file that is created along with the query, default is true (optional)"
     },
     "outputDetails": {
       "outputBucket": "The final output bucket location, the results will either be written here directly by athena, or be copied from the athenaDetails location (REQUIRED)",

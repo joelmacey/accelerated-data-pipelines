@@ -80,15 +80,15 @@ def attach_file_settings_to_event(event, context):
         athenaDetails['athenaOutputFolderPath'] = item['athenaDetails']['athenaOutputFolderPath'] \
             if 'athenaOutputFolderPath' in item['athenaDetails'] \
             else None
-        if 'deleteAthenaQueryFile' in item['athenaDetails'] and item['athenaDetails']['deleteAthenaQueryFile'] == True:
-            athenaDetails['deleteAthenaQueryFile'] = True   
+        if 'deleteAthenaQueryFile' in item['athenaDetails'] and item['athenaDetails']['deleteAthenaQueryFile'] == False:
+            athenaDetails['deleteAthenaQueryFile'] = False   
         else:
-            athenaDetails['deleteAthenaQueryFile'] = False 
+            athenaDetails['deleteAthenaQueryFile'] = True 
         
-        if 'deleteMetadataFile' in item['athenaDetails'] and item['athenaDetails']['deleteMetadataFile'] == True:
-            athenaDetails['deleteMetadataFileBool'] = True    
+        if 'deleteMetadataFile' in item['athenaDetails'] and item['athenaDetails']['deleteMetadataFile'] == False:
+            athenaDetails['deleteMetadataFileBool'] = False    
         else:
-            athenaDetails['deleteMetadataFileBool'] = False   
+            athenaDetails['deleteMetadataFileBool'] = True   
     else:
         athenaDetails = {
             "athenaOutputBucket": None,

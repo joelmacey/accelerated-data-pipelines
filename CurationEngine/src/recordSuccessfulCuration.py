@@ -60,6 +60,8 @@ def record_successful_curation_in_curation_history(event, context):
         curation_execution_name = event['curationDetails']['curationExecutionName']
         queryOutputLocation = event['queryDetails']['queryOutputLocation']
         queryExecutionId = event['queryDetails']['queryExecutionId']
+        glueDetails = event['glueDetails']
+        outputDetails = event['outputDetails']
         curationLocation = event['curationDetails']['curationLocation']
         scriptFileCommitId = event['scriptFileCommitId']
         curation_history_table = event["settings"]["curationHistoryTableName"]
@@ -78,6 +80,8 @@ def record_successful_curation_in_curation_history(event, context):
             'timestamp': int(time.time() * 1000),
             'curationExecutionName': curation_execution_name,
             'queryOutputLocation': queryOutputLocation,
+            'glueDetails': glueDetails,
+            'outputDetails': outputDetails,
             'curationOutputLocation': curationLocation,
             'athenaQueryExecutionId': queryExecutionId,
             'scriptFileCommitId': scriptFileCommitId,
