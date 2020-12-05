@@ -67,10 +67,9 @@ def update_output_details(event, context):
 	if metadata != None:
 		# Copy the file into the new location and apply metadata
 		copy_and_update_metadata_on_object(queryOutputBucket, queryOutputKey, new_bucket, new_key, metadata)
-	else:
+	elif (queryOutputBucket != new_bucket and queryOutputKey != new_key):
 		# Don't copy with metadata, just update with new filename
 		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
-
 
 	# Only delete the file as long as its not the same file
 	if (queryOutputBucket != new_bucket and queryOutputKey != new_key):

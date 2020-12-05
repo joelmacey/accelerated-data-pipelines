@@ -74,7 +74,6 @@ def attach_file_settings_to_event(event, context):
     # Retrieve all the details around Athena
     athenaDetails = {}
     if 'athenaDetails' in item:
-            
         athenaDetails['athenaOutputBucket'] = item['athenaDetails']['athenaOutputBucket'] \
             if 'athenaOutputBucket' in item['athenaDetails'] \
             else None
@@ -90,7 +89,13 @@ def attach_file_settings_to_event(event, context):
             athenaDetails['deleteMetadataFileBool'] = True    
         else:
             athenaDetails['deleteMetadataFileBool'] = False   
-    
+    else:
+        athenaDetails = {
+            "athenaOutputBucket": None,
+            "athenaOutputFolderPath": None,
+            "deleteAthenaQueryFile": False,
+            "deleteMetadataFileBool": False
+        }
     # Retrieve all the details around the output of the file
     outputDetails = {}
     outputDetails['outputFilename'] = item['outputDetails']['filename'] \
