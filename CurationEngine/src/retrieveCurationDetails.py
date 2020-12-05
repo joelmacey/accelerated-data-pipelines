@@ -93,8 +93,8 @@ def attach_file_settings_to_event(event, context):
         athenaDetails = {
             "athenaOutputBucket": None,
             "athenaOutputFolderPath": None,
-            "deleteAthenaQueryFile": False,
-            "deleteMetadataFileBool": False
+            "deleteAthenaQueryFile": True,
+            "deleteMetadataFileBool": True
         }
     # Retrieve all the details around the output of the file
     outputDetails = {}

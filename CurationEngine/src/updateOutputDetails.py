@@ -45,21 +45,26 @@ def update_output_details(event, context):
 
 	new_key = queryOutputKey # Defaults to the key
 	new_bucket = event['outputDetails']['outputBucket']
-
+	filename = new_key.split('/')[-1]
+	# If there is a filename specified, use this
 	if event['outputDetails']['outputFilename'] != None:
 		filename = event['outputDetails']['outputFilename']
-		new_key = f'{filename}.csv'
+		
+		# If the filename should include a timestamp update the filename to include
 		if event['outputDetails']['includeTimestampInFilenameBool'] == True:
 			timestamp = event['curationDetails']['curationTimestamp']
 			filename = f'{filename}{timestamp}'
-		if event['outputDetails']['outputFolderPath'] != None: # If there is a defined path, use this
-			path = ('/').join(event['outputDetails']['outputFolderPath'].split('/'))
-			new_key = f'{path}{filename}.csv'
-		elif event['outputDetails']['outputFolderPath'] == None:
-			new_key = f'{filename}.csv'
-		else:
-			path = ('/').join(new_key.split('/')[:-1]) # Otherwise use the one from the output key, splits the key, removes the filename and rejoins
-			new_key = f'{path}{filename}.csv'
+			
+	#If there is a defined path, use this, and update the key
+	if event['outputDetails']['outputFolderPath'] != None:
+		path = ('/').join(event['outputDetails']['outputFolderPath'].split('/'))
+		new_key = f'{path}/{filename}.csv'
+	elif (len(queryOutputKey.split('/')) > 1):
+		path = ('/').join(queryOutputKey.split('/')[:-1])
+		new_key = f'{path}/{filename}.csv'
+	else:
+		new_key = f'{filename}.csv'
+
 	curationDetails = event['curationDetails']
 	curationDetails['curationLocation'] = f's3://{new_bucket}/{new_key}'
 	
@@ -72,9 +77,10 @@ def update_output_details(event, context):
 	elif (queryOutputKey != new_key):
 		# Don't copy with metadata, just update with new filename
 		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
-
+	else:
+		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
 	# Only delete the file as long as its not the same file
-	if (queryOutputKey != new_key):
+	if (event['athenaDetails']['deleteAthenaQueryFile'] == True and queryOutputKey != new_key):
 		delete_object(queryOutputKey, queryOutputBucket)
 	
 	# Generate the tag list.
