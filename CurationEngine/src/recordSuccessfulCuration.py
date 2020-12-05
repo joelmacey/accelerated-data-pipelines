@@ -56,25 +56,31 @@ def record_successful_curation_in_curation_history(event, context):
     dynamodb = boto3.resource('dynamodb')
 
     try:
-        curation_execution_name = event['curationDetails']['curationExecutionName']
         curationType = event['curationDetails']['curationType']
-        queryOutputLocation = event['queryOutputLocation']
-        queryExecutionId = event['queryExecutionId']
+        curation_execution_name = event['curationDetails']['curationExecutionName']
+        queryOutputLocation = event['queryDetails']['queryOutputLocation']
+        queryExecutionId = event['queryDetails']['queryExecutionId']
+        curationLocation = event['curationDetails']['curationLocation']
         scriptFileCommitId = event['scriptFileCommitId']
-        outputBucket = event['outputBucket']
         curation_history_table = event["settings"]["curationHistoryTableName"]
-
-        tags = event['requiredTags']
-        metadata = event['requiredMetadata']
+        if event['outputDetails']['tags'] != None:
+            tags = event['outputDetails']['tags']
+        else:
+            tags = None
+        if event['outputDetails']['metadata'] != None:
+            metadata = event['outputDetails']['metadata']
+        else:
+            metadata = None
+        metadata = event['outputDetails']['metadata']
 
         dynamodb_item = {
             'curationType': curationType,
             'timestamp': int(time.time() * 1000),
-            'athenaQueryExecutionId': queryExecutionId,
-            'curationKey': queryOutputLocation,
-            'scriptFileCommitId': scriptFileCommitId,
-            'outputBucket': outputBucket,
             'curationExecutionName': curation_execution_name,
+            'queryOutputLocation': queryOutputLocation,
+            'curationOutputLocation': curationLocation,
+            'athenaQueryExecutionId': queryExecutionId,
+            'scriptFileCommitId': scriptFileCommitId,
             'tags': tags,
             'metadata': metadata
         }
@@ -95,10 +101,11 @@ def send_successful_curation_sns(event, context):
     :type context: LambdaContext
     '''
     curationType = event['curationDetails']['curationType']
-    queryOutputLocation = event['queryOutputLocation']
+    curationLocation = event['curationDetails']['curationLocation']
         
     subject = f'Data Pipeline - curation for {curationType} success'
-    message = f'The output of your curation can be found: {queryOutputLocation}'
+    message = f'The output of your curation can be found: {curationLocation}'
+    
 
     if 'SNS_SUCCESS_ARN' in os.environ:
         successSNSTopicARN = os.environ['SNS_SUCCESS_ARN']

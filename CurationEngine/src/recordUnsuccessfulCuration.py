@@ -2,6 +2,7 @@ import time
 import traceback
 import json
 import boto3
+import os
 
 class RecordUnsuccessfulCurationException(Exception):
     pass
@@ -59,7 +60,6 @@ def record_unsuccessful_curation_in_curation_history(event, context):
         curation_execution_name = event['curationDetails']['curationExecutionName']
         error = event['error-info']['Error']
         error_cause = json.loads(event['error-info']['Cause'])
-        outputBucket = event['outputBucket']
         curation_history_table = event["settings"]["curationHistoryTableName"]
         
         if 'stackTrace' in error_cause:
@@ -67,17 +67,19 @@ def record_unsuccessful_curation_in_curation_history(event, context):
         
         dynamodb_item = {
             'curationType': curationType,
-            'curationExecutionName': curation_execution_name,
             'timestamp': int(time.time() * 1000),
-            'outputBucket': outputBucket,
+            'curationExecutionName': curation_execution_name,
             'error': error,
             'errorCause': error_cause
         }
-
-        if 'queryOutputLocation' in event:
-            dynamodb_item['curationKey'] = event['queryOutputLocation']
-        if 'queryExecutionId' in event:
-            dynamodb_item['athenaQueryExecutionId'] = event['queryExecutionId']
+        if 'scriptFileCommitId' in event:
+            dynamodb_item['scriptFileCommitId'] = event['scriptFileCommitId']
+        if 'queryOutputLocation' in event['queryDetails']:
+            dynamodb_item['curationKey'] = event['queryDetails']['queryOutputLocation']
+        if 'queryExecutionId' in event['queryDetails']:
+            dynamodb_item['athenaQueryExecutionId'] = event['queryDetails']['queryExecutionId']
+        if 'curationLocation' in event['curationDetails']:
+            dynamodb_item['curationOutputLocation'] = event['curationDetails']['curationLocation']
         
         dynamodb_table = dynamodb.Table(curation_history_table)
         dynamodb_table.put_item(Item=dynamodb_item)

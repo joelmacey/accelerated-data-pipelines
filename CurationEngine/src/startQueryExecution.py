@@ -38,19 +38,23 @@ def start_query_execution(event, context):
     """
     sql_query = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
     
-    curation_bucket = event['outputBucket']
-    curation_path = event['outputFolderPath']
-    if event['athenaOutputBucket'] != None:
-        curation_bucket = event['athenaOutputBucket']
-    if event['athenaOutputFolderPath'] != None:
-        curation_path = event['athenaOutputFolderPath']    
+    curation_bucket = event['outputDetails']['outputBucket']
+    curation_path = event['outputDetails']['outputFolderPath']
+    # Overwrite default bucket and path if athena details are set
+    if event['athenaDetails']['athenaOutputBucket'] != None:
+        curation_bucket = event['athenaDetails']['athenaOutputBucket']
+    if event['athenaDetails']['athenaOutputFolderPath'] != None:
+        curation_path = event['athenaDetails']['athenaOutputFolderPath']    
+        
     output_location = f's3://{curation_bucket}/{curation_path}' 
     query_execution_id = start_athena_query(sql_query, event['glueDetails']['database'], output_location)
-
-    event.update({'queryExecutionId': query_execution_id})
+    
+    queryDetails = {}
+    queryDetails['queryExecutionId'] = query_execution_id
+    event.update({'queryDetails': queryDetails})
     
     return event
-
+    
 def start_athena_query(query_string, database, output_location):
     athena = boto3.client('athena')
 

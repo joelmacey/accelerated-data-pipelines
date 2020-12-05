@@ -1,0 +1,25 @@
+   {
+    "curationType": "The unique key used to identify the curation (REQUIRED)",
+    "sqlFilePath": "The file path within the curation scripts CodeCommit repository (REQUIRED)",
+    "cronExpression": "The cron expression that will be added as an eventbridge rule as to when to trigger this curation (REQUIRED)",
+    "glueDetails": {
+      "database": "The glue database of the data that the query will run within (REQUIRED)",
+      "tables": [
+        "The glue tables that the query references, the validation step will validate that these table exists, will accept tables within the above database, as well as tables external as long as they are in the database.table format (optional)"
+      ]
+    },
+    "athenaDetails": {
+      "athenaOutputBucket": "If you would like the file to be placed in a bucket before it is moved to a final location, specify it here (optional)",
+      "athenaOutputFolderPath": "specify the folder path that you would like the athena query to use (optional)",
+      "deleteAthenaQueryFile": "If you would like the curaiton engine to remove the inital query result after it has been moved to the final location(optional)",
+      "deleteMetadataFile": "If you would like the engine to delete the .metadata file that is created along with the query (optional)"
+    },
+    "outputDetails": {
+      "outputBucket": "The final output bucket location, the results will either be written here directly by athena, or be copied from the athenaDetails location (REQUIRED)",
+      "outputFolderPath": "The folder you would like the final file to be placed within (optional)",
+      "filename": "The filename you would like to use instead of the query id (optional)",
+      "includeTimestampInFilename": "If you would like to include a timestamp of when the file was created in order to differentiate between runs, requires filename (optional)",
+      "metadata": "metadata that you would like to attach to the final output file  (optional)",
+      "tags": "Tags that you would like to attach to the final output file (optional)"
+    }
+  }

@@ -528,12 +528,12 @@ Resources:
                 "Type": "Choice",
                 "Choices": [
                   {
-                    "Variable": "$.queryStatus",
+                    "Variable": "$.queryDetails.queryStatus",
                     "StringEquals": "SUCCEEDED",
                     "Next": "UpdateOutputDetails"
                   },
                   {
-                    "Variable": "$.queryStatus",
+                    "Variable": "$.queryDetails.queryStatus",
                     "StringEquals": "FAILED",
                     "Next": "RecordUnsuccessfulCuration"
                   }

@@ -41,10 +41,16 @@ def get_query_execution_status(event, context):
 	:return: The event object passed into the method
 	:rtype: Python type - Dict / list / int / string / float / None
 	"""
-	status, output_location = get_status(event['queryExecutionId'])
-	event.update({'queryStatus': status})
-	event.update({'queryOutputLocation': output_location})
-   
+	queryDetails = {}
+	queryDetails['queryExecutionId'] = event['queryDetails']['queryExecutionId']
+
+	status, output_location = get_status(queryDetails['queryExecutionId'])
+	
+	queryDetails['queryStatus']= status
+	queryDetails['queryOutputLocation']= output_location
+	
+	event.update({'queryDetails': queryDetails})
+
 	return event
 
 def get_status(query_execution_id):
@@ -63,8 +69,8 @@ def get_status(query_execution_id):
 	return response['QueryExecution']['Status']['State'], response['QueryExecution']['ResultConfiguration']['OutputLocation']
 
 def stop_query(query_execution_id):
-    client = boto3.client('athena')
+	client = boto3.client('athena')
 
-    response = client.stop_query_execution(
-        QueryExecutionId=query_execution_id
-    )
+	response = client.stop_query_execution(
+		QueryExecutionId=query_execution_id
+	)

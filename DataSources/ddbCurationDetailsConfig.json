@@ -1,29 +1,34 @@
 {
- "curationType": "wildrydes-rydebooking",
- "sqlFilePath": "wildrydes/rydebooking-curation.sql",
- "cronExpression": "cron(* 0/3 * * ? *)",
- "glueDetails": {
-     "database": "wildrydes",
-     "table": "rydebookings"
- },
- "outputDetails": {
-   "deleteAthenaQueryFile": true,
-   "athenaOutputBucket": "wildrydes-dev-athena-output",
-   "athenaOutputFolderPath": "adp/",
-   "deleteMetadataFile": true,
+  "curationType": "wildrydes-rydebooking",
+  "sqlFilePath": "wildrydes/rydebooking-curation.sql",
+  "cronExpression": "cron(* 0/3 * * ? *)",
+  "glueDetails": {
+    "database": "wildrydes",
+    "tables": [
+      "rydebookings",
+      "wildrydes-external.ryders"
+    ]
+  },
+  "athenaDetails": {
+    "athenaOutputBucket": "wildrydes-dev-athena-output",
+    "athenaOutputFolderPath": "adp/",
+    "deleteAthenaQueryFile": false,
+    "deleteMetadataFile": true
+  },
+  "outputDetails": {
     "outputBucket": "wildrydes-dev-curated",
     "outputFolderPath": "wildrydes/",
     "filename": "wildrydes",
     "includeTimestampInFilename": true,
     "metadata": {
-        "creator": "Eunice the Unicorn",
-        "quality": "HIGH",
-        "sourcesystem": "Curation Engine Demonstration"
-      },
+      "creator": "Eunice the Unicorn",
+      "quality": "HIGH",
+      "sourcesystem": "Curation Engine Demonstration"
+    },
     "tags": {
-        "dataOwner": "Wildrydes",
-        "dataSource": "RydeBookings",
-        "pii": "FALSE"
-      }
- }
+      "dataOwner": "Wildrydes",
+      "dataSource": "RydeBookings",
+      "pii": "FALSE"
+    }
+  }
 }

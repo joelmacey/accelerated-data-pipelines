@@ -40,16 +40,27 @@ def validate_details(event, context):
     get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
 
     does_database_exist(event['glueDetails']['database'])
-
-    does_table_exist(event['glueDetails']['database'], event['glueDetails']['table'])
-    
-    does_output_bucket_exist(event['outputBucket'])
+    if 'tables' in event['glueDetails']:
+        if event['glueDetails']['tables'] != None and len(event['glueDetails']['tables']) != 0:
+            for table in event['glueDetails']['tables']:
+                # Allow users to include the database in their table name
+                database = event['glueDetails']['database']
+                if '.' in table:
+                    database, table = table.split('.')
+                does_table_exist(database, table)
+                
+                
+    if 'athenaOutputBucket' in event['athenaDetails'] and event['athenaDetails']['athenaOutputBucket'] != None:
+        does_output_bucket_exist(event['athenaDetails']['athenaOutputBucket'])
+        
+    does_output_bucket_exist(event['outputDetails']['outputBucket'])
     
     return event
 
 def get_code_commit_file(repo, filePath):
  
     client = boto3.client('codecommit')
+
     response = client.get_file(
         repositoryName=repo,
         filePath=filePath
@@ -73,6 +84,7 @@ def does_table_exist(database, table):
     )
 
 def does_output_bucket_exist(bucket):
+    
     s3 = boto3.resource('s3')
 
     s3.Bucket(bucket) in s3.buckets.all()

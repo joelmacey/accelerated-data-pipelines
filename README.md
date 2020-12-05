@@ -3,7 +3,9 @@
 The Accelerated Data Pipelines (ADP) solution takes the next step in your data journey...data dev-ops. Enabling organisations to quickly configure and automate SQL queries to run against their data available within their AWS Glue catalog.
 
 ![High Level Architecture](Resources/High_Level.png)
+---
 ![High Level Architecture Explanation](Resources/High_Level_Explanation.png)
+
 ## Why the accelerated data pipelines was created
 
 From talking with customers who use the accelerated data lake as the foundation for their data lake, once they are able to query the data within their staged data via Athena their eyes light up with the possibilities of extracting, joining and reporting using the data now available to them. 
@@ -61,7 +63,6 @@ These are the steps required to provision the Data pipeline Solution and watch t
 * Enter the environment prefix, in this case: `wildrydes-dev-`
 * Add a KMS Key ARN if you want your S3 Buckets encrypted (recommended - also, there are further improvements with other encryption options imminent in this area)
 * All other options are self explanatory, and the defaults are acceptable when testing the solution.
-* If you would like to use an existing curation or logs bucket, you will have to alter the yml of both the storage structure and the curation engine.
 
 ## 2. Provisioning the Curation Engine
 This is the core engine for the data pipelines - it creates lambdas and a step function, that takes the entry details from a dynamodb table, verifies that it will be able to query the data, updates the output with a filename, tags and metadata.
@@ -69,7 +70,7 @@ This is the core engine for the data pipelines - it creates lambdas and a step f
 On both success and failure, the engine will updates the curationHistory table in DynamoDB. Allowing users to see the full history of all the attempted curations and see what output files are and the details used to generate this.
 
 Execution steps:
-(ignore these steps if already done in the visualisation step)
+(ignore these steps if you have AWS SAM already configured)
 * Create a IAM user, with CLI access.
 * Configure the AWS CLI with the user's access key and secret access key.
 * Install AWS SAM.
@@ -160,3 +161,4 @@ Execution steps:
 
 # Additional Resources
 * https://github.com/aws-samples/accelerated-data-lake
+

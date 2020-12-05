@@ -71,48 +71,53 @@ def attach_file_settings_to_event(event, context):
         Key={'curationType': event['curationDetails']['curationType']}, ConsistentRead=True)
     item = response['Item']
 
-    athenaOutputBucket = item['outputDetails']['athenaOutputBucket'] \
-        if 'athenaOutputBucket' in item['outputDetails'] \
+    # Retrieve all the details around Athena
+    athenaDetails = {}
+    athenaDetails['athenaOutputBucket'] = item['athenaDetails']['athenaOutputBucket'] \
+        if 'athenaOutputBucket' in item['athenaDetails'] \
         else None
-    athenaOutputFolderPath = item['outputDetails']['athenaOutputFolderPath'] \
-        if 'athenaOutputFolderPath' in item['outputDetails'] \
+    athenaDetails['athenaOutputFolderPath'] = item['athenaDetails']['athenaOutputFolderPath'] \
+        if 'athenaOutputFolderPath' in item['athenaDetails'] \
         else None
-
-    outputFilename = item['outputDetails']['filename'] \
+    if 'deleteAthenaQueryFile' in item['athenaDetails'] and item['athenaDetails']['deleteAthenaQueryFile'] == True:
+        athenaDetails['deleteAthenaQueryFile'] = True   
+    else:
+        athenaDetails['deleteAthenaQueryFile'] = False 
+    
+    if 'deleteMetadataFile' in item['athenaDetails'] and item['athenaDetails']['deleteMetadataFile'] == True:
+        athenaDetails['deleteMetadataFileBool'] = True    
+    else:
+        athenaDetails['deleteMetadataFileBool'] = False   
+    
+    # Retrieve all the details around the output of the file
+    outputDetails = {}
+    outputDetails['outputFilename'] = item['outputDetails']['filename'] \
         if 'filename' in item['outputDetails'] \
         else None
     
-    outputFolderPath = item['outputDetails']['outputFolderPath'] \
+    outputDetails['outputFolderPath'] = item['outputDetails']['outputFolderPath'] \
         if 'outputFolderPath' in item['outputDetails'] \
         else None
 
-    if 'deleteMetadataFile' in item['outputDetails'] and item['outputDetails']['deleteMetadataFile'] == True:
-        deleteMetadataFileBool = True    
-    else:
-        deleteMetadataFileBool = False
-
     if 'includeTimestampInFilename' in item['outputDetails'] and item['outputDetails']['includeTimestampInFilename'] == True:
-        includeTimestampInFilenameBool = True    
+        outputDetails['includeTimestampInFilenameBool'] = True    
     else:
-        includeTimestampInFilenameBool = False
-
-    if 'deleteAthenaQueryFile' in item['outputDetails'] and item['outputDetails']['deleteAthenaQueryFile'] == True:
-        deleteAthenaQueryFile = True   
-    else:
-        deleteAthenaQueryFile = False    
+        outputDetails['includeTimestampInFilenameBool'] = False
+    
+    outputDetails['metadata'] = item['outputDetails']['metadata'] \
+        if 'metadata' in item['outputDetails'] \
+        else None
+        
+    outputDetails['tags'] = item['outputDetails']['tags'] \
+        if 'tags' in item['outputDetails'] \
+        else None
+        
+    outputDetails['outputBucket'] = item['outputDetails']['outputBucket']
     
     event.update({'scriptFilePath': item['sqlFilePath']})
     event.update({'glueDetails': item['glueDetails']})
-    event.update({'outputFilename': outputFilename})
-    event.update({'deleteMetadataFileBool': deleteMetadataFileBool})
-    event.update({'deleteAthenaQueryFile': deleteAthenaQueryFile})
-    event.update({'athenaOutputBucket': athenaOutputBucket})
-    event.update({'athenaOutputFolderPath': athenaOutputFolderPath})
-    event.update({'includeTimestampInFilenameBool': includeTimestampInFilenameBool})
-    event.update({'outputBucket': item['outputDetails']['outputBucket']})
-    event.update({'outputFolderPath': outputFolderPath})
-    event.update({'requiredMetadata': item['outputDetails']['metadata']})
-    event.update({'requiredTags': item['outputDetails']['tags']})
+    event.update({'athenaDetails': athenaDetails})
+    event.update({'outputDetails': outputDetails})
     
     code_commit_res = get_code_commit_file(event['settings']['scriptsRepo'], event['scriptFilePath'])
     event.update({'scriptFileCommitId':code_commit_res['commitId']})
