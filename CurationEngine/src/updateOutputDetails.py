@@ -45,7 +45,7 @@ def update_output_details(event, context):
 
 	new_key = queryOutputKey # Defaults to the key
 	new_bucket = event['outputDetails']['outputBucket']
-	filename = new_key.split('/')[-1]
+	filename = new_key.split('/')[-1].split('.')[0]
 	# If there is a filename specified, use this
 	if event['outputDetails']['outputFilename'] != None:
 		filename = event['outputDetails']['outputFilename']
