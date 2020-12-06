@@ -10,7 +10,7 @@ The Accelerated Data Pipelines (ADP) solution takes the next step in your data j
 - [Explanation](#explanation)
     - [Origin](#origin) 
     - [Purpose](#purpose) 
-    - [Benefit](#benefit) 
+    - [Key Features](#key-features) 
     - [Infrastructure](#infrastructure) 
 - [Installation](#installation)
     - [1. Provisioning the Storage Structure](#1-provisioning-the-storage-structure) 
@@ -41,16 +41,16 @@ The purpose of this package is to extend the [accelerated data lake](https://git
 The platform also keeps an audit trail of when and what curation has ran for debugging purposes
 The pipeline allows the user to define everything about the output of the curation from the metadata and tags to be attached to the filename and S3 bucket for it to be placed within.
 
-## Benefit
-* Run athena queries on a scheduled basis to a defined output location
-* Integrates seamlessly with your existing Glue catalog
+## Key Features
 * Automatically creates scheduled events in EventBridge
-* Record successful and failed curations in the Curation History DynamoDB table
+* Integrates seamlessly with your existing Glue catalog
+* Run athena queries on a scheduled basis to a defined output location
 * Track history of sql script changes using CodeCommit
-* Error Notification via SNS
 * Supports long running queries (>15 minutes aka the lambda timeout)
-* Add custom metadata and tags to the output file
 * Ability to rename the output file
+* Add custom metadata and tags to the output file
+* Error Notification via SNS
+* Record successful and failed curations in the Curation History DynamoDB table
 * Stream events to existing Kibana Dashboard
 
 ## Infrastructure:
