@@ -140,8 +140,8 @@ Execution steps:
  
 You now have a fully configured your curationType.
 
-**NOTE**
-#### An explanation of the curation details dynamodb file:
+#### *Dynamodb file explained:*
+Also available `DataSources/curationDetailExplanation.json`
 ```
 {
 "curationType": "The unique key used to identify the curation (REQUIRED)",
