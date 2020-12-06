@@ -45,7 +45,7 @@ The pipeline allows the user to define everything about the output of the curati
 
 This library is licensed under the Apache 2.0 License. 
 
-# Accelerated Data Pipeline installation instructions
+# Installation Instructions
 These are the steps required to provision the Data pipeline Solution and watch the ingress of data.
 * Provision the Required Storage Structure (5 minutes)
 * Provision the Curation Engine (5 minutes)
@@ -137,8 +137,38 @@ Execution steps:
 * Open the DataSource table, which for the environment prefix used in this demonstration will be: `wildrydes-dev-curationDetails`
 * Go to the Items tab, click Create Item, switch to 'Text' view and paste in the contents of the `ddbCurationDetailsConfig.json` file. 
 * Save the item.
-
+ 
 You now have a fully configured your curationType.
+
+**NOTE**
+#### An explanation of the curation details dynamodb file:
+```
+{
+"curationType": "The unique key used to identify the curation (REQUIRED)",
+"sqlFilePath": "The file path within the curation scripts CodeCommit repository (REQUIRED)",
+"cronExpression": "The cron expression that will be added as an eventbridge rule as to when to trigger this curation (REQUIRED)",
+"glueDetails": {
+    "database": "The glue database of the data that the query will run within (REQUIRED)",
+    "tables": [
+    "The glue tables that the query references, the validation step will validate that these table exists, will accept tables within the above database, as well as tables external as long as they are in the database.table format (optional)"
+    ]
+},
+"athenaDetails": {
+    "athenaOutputBucket": "If you would like the file to be placed in a bucket before it is moved to a final location, specify it here (optional)",
+    "athenaOutputFolderPath": "specify the folder path that you would like the athena query to use (optional)",
+    "deleteAthenaQueryFile": "If you would like the curaiton engine to remove the inital query result after it has been moved to the final location, default is True (optional)",
+    "deleteMetadataFile": "If you would like the engine to delete the .metadata file that is created along with the query, default is true (optional)"
+},
+"outputDetails": {
+    "outputBucket": "The final output bucket location, the results will either be written here directly by athena, or be copied from the athenaDetails location (REQUIRED)",
+    "outputFolderPath": "The folder you would like the final file to be placed within (optional)",
+    "filename": "The filename you would like to use instead of the query id (optional)",
+    "includeTimestampInFilename": "If you would like to include a timestamp of when the file was created in order to differentiate between runs, requires filename (optional)",
+    "metadata": "metadata that you would like to attach to the final output file  (optional)",
+    "tags": "Tags that you would like to attach to the final output file (optional)"
+}
+}
+```
 
 ### 5.3 Initialise and use Elasticsearch / Kibana
 The above steps will have resulted in the rydebookings curation being entered into the DynamoDB curation history table (`wildrydes-dev-curationHistory`). The visualisation steps subscribed to these table's stream and all updates are now sent to elasticsearch.
