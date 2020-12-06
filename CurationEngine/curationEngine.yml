@@ -225,7 +225,13 @@ Resources:
           SCRIPTS_REPO_NAME:
             Fn::ImportValue:
               !Sub "${EnvironmentPrefix}CodeCommitScriptsRepo-Name"
-  
+  StartCurationProcessingInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt StartCurationProcessing.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*
   CreateNewEventRule:
     Type: 'AWS::Serverless::Function'
     Properties:
