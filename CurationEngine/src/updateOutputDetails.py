@@ -58,13 +58,13 @@ def update_output_details(event, context):
 	#If there is a defined path, use this, and update the key
 	if event['outputDetails']['outputFolderPath'] != None:
 		path = ('/').join(event['outputDetails']['outputFolderPath'].split('/'))
-		new_key = f'{path}/{filename}.csv'
+		new_key = f'{path}{filename}.csv'
 	elif (len(queryOutputKey.split('/')) > 1):
-		path = ('/').join(queryOutputKey.split('/')[:-1])
+		path = ('/').join(queryOutputKey.split('/')[:-1]) # if theres a path in the query location, use this, it wont finish with a /
 		new_key = f'{path}/{filename}.csv'
 	else:
 		new_key = f'{filename}.csv'
-
+	
 	curationDetails = event['curationDetails']
 	curationDetails['curationLocation'] = f's3://{new_bucket}/{new_key}'
 	
@@ -78,7 +78,7 @@ def update_output_details(event, context):
 		# Don't copy with metadata, just update with new filename
 		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
 	else:
-		copy_object(queryOutputBucket, queryOutputKey, new_bucket, new_key)
+		pass
 	# Only delete the file as long as its not the same file
 	if (event['athenaDetails']['deleteAthenaQueryFile'] == True and queryOutputKey != new_key):
 		delete_object(queryOutputKey, queryOutputBucket)
