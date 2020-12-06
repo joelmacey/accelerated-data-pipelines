@@ -15,14 +15,14 @@ The Accelerated Data Pipelines (ADP) solution takes the next step in your data j
 - [Installation](#installation)
     - [1. Provisioning the Storage Structure](#1-provisioning-the-storage-structure) 
     - [2. Provisioning the Curation Engine](#2-provisioning-the-curation-engine) 
-    - [3. Provisioning the Visualisation Lambdas](#2-provisioning-the-visualisation-lambdas)
+    - [3. Provisioning the Visualisation Lambdas](#3-provisioning-the-visualisation-lambdas)
 - [Usage](#usage)
     - [Configure a curation script](#configure-a-curation-script)
     - [Configure the sample data source](#configure-the-sample-data-source)
     - [Initialise and use Elasticsearch / Kibana](#initialise-and-use-elasticsearch--kibana)
 - [Additional Resources](#additonal-resources)
-    - [Curation Details DyanmoDB File Explanation][#curation-details-dyanmodb-file-xxplanation]
-    - [Architecture](#rrchitecture)
+    - [Curation Details DyanmoDB File Explanation](#curation-details-dyanmodb-file-explanation)
+    - [Architecture](#architecture)
 - [License](#license)
 
 # Explanation
