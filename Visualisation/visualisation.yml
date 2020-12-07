@@ -27,7 +27,7 @@ Resources:
                   - dynamodb:ListStreams              
                 Resource:
                   Fn::ImportValue:
-                    !Sub "${EnvironmentPrefix}-CurationHistoryStreamARN"
+                    !Sub "${EnvironmentPrefix}CurationHistoryStreamARN"
         - PolicyName: CloudwatchLogs
           PolicyDocument:
             Version: "2012-10-17"
@@ -56,18 +56,18 @@ Resources:
       Enabled: True
       EventSourceArn: 
         Fn::ImportValue:
-          !Sub "${EnvironmentPrefix}-CurationHistoryStreamARN"
+          !Sub "${EnvironmentPrefix}CurationHistoryStreamARN"
       FunctionName: 
-        Fn::GetAtt: [ SendDataCatalogUpdateToElasticsearch , Arn ]
+        Fn::GetAtt: [ SendCurationHistoryUpdateToElasticsearch , Arn ]
       StartingPosition: LATEST # Subscribe from the tail of the stream
     DependsOn: LambdaExecutionRole
 
-  SendDataCatalogUpdateToElasticsearch:
+  SendCurationHistoryUpdateToElasticsearch:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: sendDataCatalogUpdateToElasticsearch.lambda_handler
+      Handler: sendCurationHistoryUpdateToElasticsearch.lambda_handler
       Runtime: python3.6
-      CodeUri: ./src/sendDataCatalogUpdateToElasticsearch.py
+      CodeUri: ./src/sendCurationHistoryUpdateToElasticsearch.py
       Description: Sends changes in the data catalog to elasticsearch
       MemorySize: 128
       Timeout: 10

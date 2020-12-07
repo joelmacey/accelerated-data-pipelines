@@ -28,7 +28,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
 
-class SendDataCatalogUpdateToElasticsearch(Exception):
+class SendCurationHistoryUpdateToElasticsearch(Exception):
     pass
 
 
